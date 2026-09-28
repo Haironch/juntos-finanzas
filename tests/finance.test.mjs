@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {cents,allocation,summary,validateTransaction} from '../dist/finance.js';
+const transaction=(props={})=>({id:'1',kind:'expense',person:'him',scope:'shared',amount:10000,date:'2026-09-15',category:'Hogar',description:'Ejemplo',...props});
+test('Convierte dinero sin perder centavos y rechaza importes inválidos',()=>{assert.equal(cents('8000'),800000);assert.equal(cents('0.29'),29);for(const value of ['-1','0','1.005','NaN','Infinity','1e3',''])assert.throws(()=>cents(value));});
+test('Un gasto compartido conserva cada centavo',()=>{assert.deepEqual(allocation(transaction()),[-5000,-5000]);assert.deepEqual(allocation(transaction({amount:101})),[-50,-51]);});
+test('Un gasto personal solo afecta a su dueño',()=>{assert.deepEqual(allocation(transaction({scope:'personal',person:'her'})),[0,-10000]);});
+test('Ingresos, gastos compartidos y personales producen saldos correctos por mes',()=>{const data=[transaction({kind:'income',amount:800000}),transaction({kind:'income',person:'her',amount:600000}),transaction({amount:200000}),transaction({scope:'personal',person:'her',amount:50000}),transaction({date:'2026-10-01',amount:900000})];const s=summary(data,'2026-09');assert.deepEqual(s.balance,[700000,450000]);assert.equal(s.total,1150000);assert.equal(s.totalIncome-s.totalExpense,s.total);assert.equal(summary(data,'2026-08').total,0);});
+test('Fechas imposibles y montos fraccionarios se rechazan',()=>{assert.throws(()=>validateTransaction(transaction({date:'2026-02-30'})));assert.throws(()=>validateTransaction(transaction({amount:1.5})));assert.throws(()=>validateTransaction(transaction({description:' '})));});
+test('Un saldo negativo se conserva sin ocultar deuda',()=>{assert.equal(summary([transaction({scope:'personal',amount:1000})],'2026-09').total,-1000);});

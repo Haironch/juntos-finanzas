@@ -1,0 +1,32 @@
+# Juntos · Finanzas en pareja
+
+Primera versión local en español y quetzales. Abrir http://127.0.0.1:5173 después de ejecutar `npm run dev` desde esta carpeta. Requiere Node.js 22; no necesita instalar dependencias. `npm test` verifica los cálculos y `npm run check` revisa la sintaxis.
+
+## Funciona hoy
+
+- Ingresos por persona, colores azul y rosa, y saldo conjunto.
+- Gastos personales o compartidos 50/50, edición y eliminación con confirmación.
+- Importes calculados como centavos enteros. Cuando el reparto tiene un centavo indivisible, el saldo rosa asume ese centavo.
+- Meta mensual, margen antes de cada gasto, categorías, búsqueda y filtros.
+- Meses independientes: no se trasladan automáticamente saldos. El saldo actual es ahorro potencial, no dinero reservado ni una transferencia bancaria.
+- Nombres configurables. Ejemplo interactivo en memoria separado de los datos reales.
+- Guardado en localStorage, respaldo JSON y restauración validada. La restauración reemplaza los datos actuales después de confirmar.
+- Diseño adaptable a computadora y móvil; navegación con teclado y diálogos nativos.
+
+Los datos se conservan solo en este navegador y origen (usar siempre la misma URL). No hay autenticación ni sincronización entre equipos. Borrar los datos del navegador elimina el guardado: descargar respaldos periódicamente. No publicar esta versión como una aplicación compartida de producción.
+
+## Stack y siguiente etapa
+
+La versión local usa HTML, CSS y módulos JavaScript, servidos con Node.js; el motor financiero está separado de la interfaz. Esto permite validar el flujo sin dependencias ni cuentas externas.
+
+Para la versión compartida recomiendo Vercel + Turso: interfaz y API en Vercel, persistencia mediante el cliente libSQL de Turso en el servidor. Incorporar autenticación, un hogar privado con exactamente dos miembros, autorización de cada operación, migraciones, y validación de importes en la API. Nunca exponer el token de Turso en el navegador. React/Next.js sería una opción para estructurar esa siguiente etapa si crecen las pantallas; no está instalado en esta versión.
+
+Render queda como alternativa para alojar una API persistente si surgen procesos en segundo plano. Esta primera versión no necesita ese servicio adicional. No se crearon servicios ni se desplegó nada.
+
+Referencias: https://vercel.com/docs/frameworks y https://github.com/tursodatabase/libsql-client-ts
+
+## Verificación
+
+Seis pruebas de dinero, reparto, fechas, aislamiento mensual y saldos negativos. Comprobación manual en navegador del ejemplo, registro compartido, cambio mensual y edición de meta. Revisión visual en escritorio y móvil.
+
+Se expone opcionalmente la consulta de solo lectura WebMCP `read_month_summary` si el navegador la admite; usa los mismos cálculos que la interfaz.

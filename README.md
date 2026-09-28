@@ -1,5 +1,7 @@
 # Juntos · Finanzas en pareja
 
+El esquema de la próxima versión compartida está preparado en [database/README.md](database/README.md), con una migración SQLite/libSQL y pruebas locales. Todavía no está conectado a la interfaz ni aplicado en Turso.
+
 Primera versión local en español y quetzales. Abrir http://127.0.0.1:5173 después de ejecutar `npm run dev` desde esta carpeta. Requiere Node.js 22; no necesita instalar dependencias. `npm test` verifica los cálculos y `npm run check` revisa la sintaxis.
 
 ## Funciona hoy

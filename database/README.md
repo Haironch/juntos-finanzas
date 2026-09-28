@@ -1,6 +1,6 @@
 # Base de datos de Juntos
 
-Estado: primera migración creada y probada en SQLite local. Todavía NO se aplicó en Turso, NO existe una API pública y la interfaz sigue usando el guardado del navegador.
+Estado: primera migración creada y probada con el cliente libSQL (`@libsql/client`) sobre un archivo local. Todavía NO se aplicó en Turso, NO existe una API pública y la interfaz sigue usando el guardado del navegador.
 
 ## Modelo
 
@@ -17,16 +17,15 @@ Un hogar puede tener un solo miembro durante la configuración, pero requiere do
 
 `transaction_allocations` es una vista calculada: ingresos positivos, gastos negativos, compartidos por mitad y centavo impar para rosa. Un gasto de Q 100.01 genera -5000 y -5001 centavos. No se almacenan saldos acumulados ni se descuentan las metas. Se filtra cada mes por fechas locales, sin arrastre automático.
 
-## Ejecutar localmente
-
-Desde la raíz del proyecto, con Python 3:
+## Ejecutar
 
 ```sh
-python3 scripts/migrate-local.py
-python3 -m unittest discover -s tests -p '*_test.py' -v
+npm install
+npm run db:migrate   # sin .env: .data/juntos.db; con TURSO_DATABASE_URL y TURSO_AUTH_TOKEN: Turso
+npm test
 ```
 
-El aplicador crea `.data/juntos.db`, fuera de Git; no carga datos de ejemplo. Cada migración se aplica en una transacción, y repetir el comando conserva los datos. No editar migraciones que ya estén aplicadas: agregar una nueva.
+`database/db.mjs` aplica cada migración pendiente en una transacción de escritura, registra su checksum en `schema_migrations`, rechaza migraciones ya aplicadas que fueron modificadas, exige `PRAGMA foreign_keys=1` (libSQL lo activa por defecto) y ejecuta `PRAGMA foreign_key_check` al final. No carga datos de ejemplo. No editar migraciones que ya estén aplicadas: agregar una nueva.
 
 ## Integración pendiente
 
@@ -37,4 +36,4 @@ El aplicador crea `.data/juntos.db`, fuera de Git; no carga datos de ejemplo. Ca
 5. Implementar consultas parametrizadas siempre acotadas al hogar autorizado. Crear/editar metas y movimientos incrementa `version` y actualiza `updated_at`; editar con `WHERE household_id=? AND id=? AND version=?` y rechazar conflictos, para no sobrescribir cambios simultáneos.
 6. Importar los datos locales, si existen, de forma transaccional e idempotente tras vincular `him` con azul y `her` con rosa. No importar automáticamente el modo de ejemplo.
 
-No se instalaron clientes remotos ni se expusieron endpoints sin autenticación. Las siete pruebas cubren reparto, edición/borrado y totales, datos inválidos, referencias entre hogares, límite de miembros, metas y reaplicación de migraciones. Deben repetirse contra el motor remoto al conectarlo.
+No se instalaron clientes remotos ni se expusieron endpoints sin autenticación. Las nueve pruebas de `tests/schema.test.mjs` cubren reparto, edición/borrado y totales, datos inválidos, referencias entre hogares, límite de miembros, metas reaplicación, checksum modificado y reversión de una migración fallida. Deben repetirse contra el motor remoto al conectarlo.

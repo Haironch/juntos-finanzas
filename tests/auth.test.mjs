@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {afterEach, beforeEach, test} from 'node:test';
 import {createClient} from '@libsql/client';
-import {createAuth, missingAuthEnv, resolveMember} from '../database/auth.mjs';
+import {createAuth, missingAuthEnv, resolveUser} from '../database/auth.mjs';
 import {migrate} from '../database/db.mjs';
 
 // Valores ficticios: no se contacta a Google en estas pruebas.
@@ -64,14 +64,9 @@ test('rechaza redirecciones y peticiones con cookie desde otros orígenes', asyn
   assert.equal((await signIn({Origin: 'https://sitio-ajeno.example', Cookie: 'x=1'})).status, 403);
 });
 
-test('vincula la cuenta con users una sola vez y devuelve su hogar', async () => {
-  const first = await resolveMember(db, 'auth-azul');
-  assert.equal(first.member, null);
-  assert.equal((await resolveMember(db, 'auth-azul')).userId, first.userId);
-  await db.batch([
-    "INSERT INTO households(id,name) VALUES ('home','Juntos')",
-    {sql: "INSERT INTO household_members(household_id,user_id,slot,display_name) VALUES ('home',?,'blue','Azul')", args: [first.userId]},
-  ], 'write');
-  assert.deepEqual((await resolveMember(db, 'auth-azul')).member, {householdId: 'home', slot: 'blue', displayName: 'Azul'});
-  assert.equal((await db.execute('SELECT count(*) AS n FROM users')).rows[0].n, 1);
+test('vincula la cuenta de Better Auth con users una sola vez', async () => {
+  const first = await resolveUser(db, 'auth-azul');
+  assert.equal(await resolveUser(db, 'auth-azul'), first);
+  assert.notEqual(await resolveUser(db, 'auth-rosa'), first);
+  assert.equal((await db.execute('SELECT count(*) AS n FROM users')).rows[0].n, 2);
 });

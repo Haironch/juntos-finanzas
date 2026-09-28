@@ -1,6 +1,6 @@
 # Base de datos de Juntos
 
-Estado: migraciones 001 (datos) y 002 (sesiones) probadas con el cliente libSQL (`@libsql/client`) sobre un archivo local. Inicio de sesión con Google (Better Auth) y `GET /api/me` listos en el servidor. Todavía NO se aplicó en Turso, NO hay endpoints de hogar/movimientos y la interfaz sigue usando el guardado del navegador.
+Estado: migraciones 001 (datos), 002 (sesiones) y 003 (colores e invitaciones) probadas con el cliente libSQL (`@libsql/client`) sobre un archivo local. Inicio de sesión con Google (Better Auth) y `GET /api/me` listos en el servidor. API de hogar e invitaciones lista. Todavía NO se aplicó en Turso, NO hay endpoints de movimientos/metas y la interfaz sigue usando el guardado del navegador.
 
 ## Modelo
 
@@ -8,13 +8,14 @@ Estado: migraciones 001 (datos) y 002 (sesiones) probadas con el cliente libSQL 
 | --- | --- |
 | users | Identidad de Juntos: emisor `better-auth` y sujeto = id de `auth_users`. Se crea al consultar `/api/me`. Sin contraseñas. |
 | households | Espacio privado, moneda GTQ y zona horaria. |
-| household_members | Hasta dos miembros por hogar, posiciones azul/rosa y nombres visibles. Cada usuario pertenece a un hogar. |
+| household_members | Hasta dos miembros por hogar. `slot` es la posición permanente (blue = quien creó el hogar, pink = quien se unió) y decide el centavo impar. `color` es visual, editable y distinto entre los dos. Cada usuario pertenece a un hogar. |
+| household_invites | Códigos de un solo uso (solo su hash), válidos 7 días; uno nuevo invalida los anteriores. |
 | transactions | Ingresos y gastos, dueño, autor, categoría y fecha local. |
 | monthly_goals | Una meta por hogar y mes. |
 | auth_users, auth_sessions, auth_accounts, auth_verifications | Tablas de Better Auth (columnas camelCase). Tokens OAuth cifrados. |
 | schema_migrations | Registro de migraciones y sus checksums. |
 
-Un hogar puede tener un solo miembro durante la configuración, pero requiere dos para registrar un gasto compartido. La identidad/color de los miembros no cambia: eso evitará alterar los repartos históricos. Los nombres sí se pueden editar.
+Un hogar puede tener un solo miembro durante la configuración, pero requiere dos para registrar un gasto compartido. La posición (`slot`) de los miembros no cambia: eso evita alterar los repartos históricos. El nombre y el color sí se pueden editar; los colores disponibles son blue, pink, green, purple, orange y teal.
 
 `transaction_allocations` es una vista calculada: ingresos positivos, gastos negativos, compartidos por mitad y centavo impar para rosa. Un gasto de Q 100.01 genera -5000 y -5001 centavos. No se almacenan saldos acumulados ni se descuentan las metas. Se filtra cada mes por fechas locales, sin arrastre automático.
 
@@ -40,13 +41,26 @@ Better Auth con Google, montado en `/api/auth/*` por `server.mjs` y configurado 
 
 Configurar Google: Google Cloud Console > APIs y servicios > Credenciales > Crear ID de cliente OAuth (aplicación web), con el URI de redirección `http://127.0.0.1:5173/api/auth/callback/google` (y después el de producción). Usar `127.0.0.1`, no `localhost`: en este equipo `localhost` puede resolver a otro servidor en el mismo puerto.
 
+## API del hogar
+
+Todas requieren sesión. Las que modifican datos exigen `Origin` igual a `BETTER_AUTH_URL` y cuerpo JSON (máx. 10 KB). El usuario y el hogar salen siempre de la sesión.
+
+| Ruta | Qué hace |
+| --- | --- |
+| `GET /api/me` | `{user, household}`; `household` es `null` sin hogar. |
+| `POST /api/household` `{name, displayName}` | Crea el hogar; quien lo crea queda en blue con color azul. |
+| `POST /api/household/invite` `{}` | Devuelve `{code: "XXXX-XXXX-XXXX", expiresAt}` para compartir con la pareja. |
+| `POST /api/household/join` `{code, displayName}` | Une a la pareja en pink con el primer color libre (rosa). Acepta el código sin guiones o en minúsculas. |
+| `PATCH /api/household/me` `{displayName?, color?}` | Cada quien edita su nombre o color; 409 si el color ya lo usa su pareja. |
+
+Para intercambiar colores, una persona elige primero un tercer color.
+
 ## Integración pendiente
 
 1. Aplicar las migraciones en una base de desarrollo de Turso (`npm run db:migrate` con `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN` en `.env`), luego en producción. Nunca poner esas variables en `dist/`, Git ni el navegador.
-2. Crear el hogar e invitar a la pareja: la primera persona crea el hogar (azul o rosa) y la segunda se une con un código de un solo uso. Definir antes cómo se eligen los colores.
-3. API de movimientos y metas: `household_id` y `created_by` salen siempre de la sesión, nunca del navegador. Una FK valida pertenencia, NO reemplaza autorización. Consultas parametrizadas acotadas al hogar; editar con `WHERE household_id=? AND id=? AND version=?` y rechazar conflictos.
-4. Conectar la interfaz a la API (botón de Google, estado de sesión) manteniendo el modo local.
-5. Importar los datos locales de forma transaccional e idempotente tras vincular `him` con azul y `her` con rosa. No importar el modo de ejemplo.
-6. Despliegue en Vercel: adaptar `server.mjs` a funciones y configurar las variables de entorno allí.
+2. API de movimientos y metas: `household_id` y `created_by` salen siempre de la sesión, nunca del navegador. Una FK valida pertenencia, NO reemplaza autorización. Consultas parametrizadas acotadas al hogar; editar con `WHERE household_id=? AND id=? AND version=?` y rechazar conflictos.
+3. Conectar la interfaz a la API (botón de Google, crear hogar, compartir código, elegir color) manteniendo el modo local.
+4. Importar los datos locales de forma transaccional e idempotente tras vincular `him` con azul y `her` con rosa. No importar el modo de ejemplo.
+5. Despliegue en Vercel: adaptar `server.mjs` a funciones y configurar las variables de entorno allí.
 
-Pruebas: `tests/schema.test.mjs` (9) cubre reparto, totales, datos inválidos, referencias entre hogares, límite de miembros, metas y el migrador; `tests/auth.test.mjs` (5) cubre variables faltantes, lista de correos, redirección a Google, orígenes ajenos y el vínculo con `users`. Repetirlas contra Turso al conectarlo.
+Pruebas: `tests/schema.test.mjs` (9) cubre reparto, totales, datos inválidos, referencias entre hogares, límite de miembros, metas y el migrador; `tests/auth.test.mjs` (5) cubre variables faltantes, lista de correos, redirección a Google, orígenes ajenos y el vínculo con `users`; `tests/households.test.mjs` (8) recorre la API por HTTP: crear, invitar, unirse, códigos usados/vencidos/reemplazados, segundo hogar, colores distintos, reparto intacto al cambiar colores y rechazo de otros orígenes. Repetirlas contra Turso al conectarlo.

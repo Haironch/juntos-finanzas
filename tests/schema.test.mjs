@@ -19,7 +19,7 @@ beforeEach(async () => {
   await db.batch([
     ...['a', 'b', 'c'].map(user => ({sql: 'INSERT INTO users(id,auth_issuer,auth_subject) VALUES (?,?,?)', args: [user, 'test', user]})),
     "INSERT INTO households(id,name) VALUES ('home','Juntos'),('other','Otro')",
-    "INSERT INTO household_members(household_id,user_id,slot,display_name) VALUES ('home','a','blue','Él'),('home','b','pink','Ella'),('other','c','blue','Otro')",
+    "INSERT INTO household_members(household_id,user_id,slot,color,display_name) VALUES ('home','a','blue','blue','Él'),('home','b','pink','pink','Ella'),('other','c','blue','blue','Otro')",
   ], 'write');
 });
 
@@ -66,7 +66,7 @@ test('impide referencias a miembros de otro hogar', async () => {
 });
 
 test('máximo dos miembros e identidad histórica permanente', async () => {
-  await assert.rejects(db.execute("INSERT INTO household_members VALUES ('home','c','blue','Tercero',CURRENT_TIMESTAMP)"), constraint);
+  await assert.rejects(db.execute("INSERT INTO household_members(household_id,user_id,slot,color,display_name) VALUES ('home','c','blue','green','Tercero')"), constraint);
   await assert.rejects(add({home: 'other', creator: 'c'}), constraint);
   await add();
   await assert.rejects(db.execute("DELETE FROM household_members WHERE user_id='b'"), constraint);

@@ -48,20 +48,15 @@ export function createAuth(client, env = process.env) {
   });
 }
 
-// Vincula la cuenta de Better Auth con la identidad de Juntos (tabla users) y su hogar, si ya pertenece a uno.
-export async function resolveMember(client, authUserId) {
+// Vincula la cuenta de Better Auth con la identidad de Juntos (tabla users) y devuelve users.id.
+export async function resolveUser(client, authUserId) {
   await client.execute({
     sql: 'INSERT INTO users(id, auth_issuer, auth_subject) VALUES (?, ?, ?) ON CONFLICT(auth_issuer, auth_subject) DO NOTHING',
     args: [randomUUID(), AUTH_ISSUER, authUserId],
   });
   const {rows: [row]} = await client.execute({
-    sql: `SELECT u.id AS user_id, m.household_id, m.slot, m.display_name
-          FROM users u LEFT JOIN household_members m ON m.user_id = u.id
-          WHERE u.auth_issuer = ? AND u.auth_subject = ?`,
+    sql: 'SELECT id FROM users WHERE auth_issuer = ? AND auth_subject = ?',
     args: [AUTH_ISSUER, authUserId],
   });
-  return {
-    userId: row.user_id,
-    member: row.household_id ? {householdId: row.household_id, slot: row.slot, displayName: row.display_name} : null,
-  };
+  return row.id;
 }

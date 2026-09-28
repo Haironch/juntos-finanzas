@@ -1,17 +1,18 @@
 # Base de datos de Juntos
 
-Estado: primera migración creada y probada con el cliente libSQL (`@libsql/client`) sobre un archivo local. Todavía NO se aplicó en Turso, NO existe una API pública y la interfaz sigue usando el guardado del navegador.
+Estado: migraciones 001 (datos) y 002 (sesiones) probadas con el cliente libSQL (`@libsql/client`) sobre un archivo local. Inicio de sesión con Google (Better Auth) y `GET /api/me` listos en el servidor. Todavía NO se aplicó en Turso, NO hay endpoints de hogar/movimientos y la interfaz sigue usando el guardado del navegador.
 
 ## Modelo
 
 | Tabla | Propósito |
 | --- | --- |
-| users | Identidad externa: emisor y sujeto de un proveedor de acceso aún por elegir. Sin contraseñas. |
+| users | Identidad de Juntos: emisor `better-auth` y sujeto = id de `auth_users`. Se crea al consultar `/api/me`. Sin contraseñas. |
 | households | Espacio privado, moneda GTQ y zona horaria. |
 | household_members | Hasta dos miembros por hogar, posiciones azul/rosa y nombres visibles. Cada usuario pertenece a un hogar. |
 | transactions | Ingresos y gastos, dueño, autor, categoría y fecha local. |
 | monthly_goals | Una meta por hogar y mes. |
-| schema_migrations | Registro de migraciones locales y sus checksums. |
+| auth_users, auth_sessions, auth_accounts, auth_verifications | Tablas de Better Auth (columnas camelCase). Tokens OAuth cifrados. |
+| schema_migrations | Registro de migraciones y sus checksums. |
 
 Un hogar puede tener un solo miembro durante la configuración, pero requiere dos para registrar un gasto compartido. La identidad/color de los miembros no cambia: eso evitará alterar los repartos históricos. Los nombres sí se pueden editar.
 
@@ -27,13 +28,25 @@ npm test
 
 `database/db.mjs` aplica cada migración pendiente en una transacción de escritura, registra su checksum en `schema_migrations`, rechaza migraciones ya aplicadas que fueron modificadas, exige `PRAGMA foreign_keys=1` (libSQL lo activa por defecto) y ejecuta `PRAGMA foreign_key_check` al final. No carga datos de ejemplo. No editar migraciones que ya estén aplicadas: agregar una nueva.
 
+## Inicio de sesión
+
+Better Auth con Google, montado en `/api/auth/*` por `server.mjs` y configurado en `database/auth.mjs`:
+
+- Solo los correos verificados de `ALLOWED_EMAILS` pueden crear cuenta.
+- Sesión en cookie httpOnly; las sesiones se guardan en `auth_sessions` de la misma base.
+- Protección de redirecciones y peticiones con cookie desde otros orígenes (Better Auth).
+- `GET /api/me` devuelve `{user, member}`; `member` es `null` mientras la persona no pertenezca a un hogar.
+- Sin las variables de `.env.example`, el servidor sigue sirviendo la app local y `/api` responde 503.
+
+Configurar Google: Google Cloud Console > APIs y servicios > Credenciales > Crear ID de cliente OAuth (aplicación web), con el URI de redirección `http://127.0.0.1:5173/api/auth/callback/google` (y después el de producción). Usar `127.0.0.1`, no `localhost`: en este equipo `localhost` puede resolver a otro servidor en el mismo puerto.
+
 ## Integración pendiente
 
-1. Identificar la base remota y su motor. Este esquema utiliza SQLite/libSQL; confirmar compatibilidad antes de aplicar en otro motor. Turso distingue actualmente entre Turso Database y libSQL, con clientes diferentes: https://docs.turso.tech/sdk/ts/reference.
-2. Configurar `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN` solo en el entorno del servidor. Nunca en `dist/`, Git ni el navegador. `.env.example` contiene exclusivamente campos vacíos.
-3. Adaptar el aplicador remoto al cliente elegido, preservando transacción y registro de checksum. Activar y verificar `PRAGMA foreign_keys=ON` en cada conexión; probar la migración en una base de desarrollo antes de producción.
-4. Elegir el proveedor de acceso y asociar las dos identidades verificadas. La API debe resolver `household_id` y `created_by` desde la sesión, nunca confiar en esos valores enviados por el navegador. Una FK valida pertenencia, NO reemplaza autorización ni evita lecturas de otro hogar.
-5. Implementar consultas parametrizadas siempre acotadas al hogar autorizado. Crear/editar metas y movimientos incrementa `version` y actualiza `updated_at`; editar con `WHERE household_id=? AND id=? AND version=?` y rechazar conflictos, para no sobrescribir cambios simultáneos.
-6. Importar los datos locales, si existen, de forma transaccional e idempotente tras vincular `him` con azul y `her` con rosa. No importar automáticamente el modo de ejemplo.
+1. Aplicar las migraciones en una base de desarrollo de Turso (`npm run db:migrate` con `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN` en `.env`), luego en producción. Nunca poner esas variables en `dist/`, Git ni el navegador.
+2. Crear el hogar e invitar a la pareja: la primera persona crea el hogar (azul o rosa) y la segunda se une con un código de un solo uso. Definir antes cómo se eligen los colores.
+3. API de movimientos y metas: `household_id` y `created_by` salen siempre de la sesión, nunca del navegador. Una FK valida pertenencia, NO reemplaza autorización. Consultas parametrizadas acotadas al hogar; editar con `WHERE household_id=? AND id=? AND version=?` y rechazar conflictos.
+4. Conectar la interfaz a la API (botón de Google, estado de sesión) manteniendo el modo local.
+5. Importar los datos locales de forma transaccional e idempotente tras vincular `him` con azul y `her` con rosa. No importar el modo de ejemplo.
+6. Despliegue en Vercel: adaptar `server.mjs` a funciones y configurar las variables de entorno allí.
 
-No se instalaron clientes remotos ni se expusieron endpoints sin autenticación. Las nueve pruebas de `tests/schema.test.mjs` cubren reparto, edición/borrado y totales, datos inválidos, referencias entre hogares, límite de miembros, metas reaplicación, checksum modificado y reversión de una migración fallida. Deben repetirse contra el motor remoto al conectarlo.
+Pruebas: `tests/schema.test.mjs` (9) cubre reparto, totales, datos inválidos, referencias entre hogares, límite de miembros, metas y el migrador; `tests/auth.test.mjs` (5) cubre variables faltantes, lista de correos, redirección a Google, orígenes ajenos y el vínculo con `users`. Repetirlas contra Turso al conectarlo.

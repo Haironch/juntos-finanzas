@@ -1,6 +1,6 @@
 # Juntos · Finanzas en pareja
 
-El esquema de la próxima versión compartida está preparado en [database/README.md](database/README.md), con una migración SQLite/libSQL, el migrador `npm run db:migrate` y pruebas locales. Todavía no está conectado a la interfaz ni aplicado en Turso.
+El esquema de la próxima versión compartida está preparado en [database/README.md](database/README.md), con migraciones SQLite/libSQL, el migrador `npm run db:migrate`, inicio de sesión con Google (Better Auth) en el servidor y pruebas locales. Todavía no está conectado a la interfaz ni aplicado en Turso. La configuración va en `.env` (ver `.env.example`); sin ella la app local funciona igual. El puerto se cambia con `PORT`.
 
 Primera versión local en español y quetzales. Abrir http://127.0.0.1:5173 después de ejecutar `npm run dev` desde esta carpeta. Requiere Node.js 22; ejecutar `npm install` una vez (cliente libSQL para la base de datos). `npm test` verifica los cálculos y `npm run check` revisa la sintaxis.
 

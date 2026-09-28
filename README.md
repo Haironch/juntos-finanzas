@@ -32,3 +32,15 @@ Referencias: https://vercel.com/docs/frameworks y https://github.com/tursodataba
 Seis pruebas de dinero, reparto, fechas, aislamiento mensual y saldos negativos. Comprobación manual en navegador del ejemplo, registro compartido, cambio mensual y edición de meta. Revisión visual en escritorio y móvil.
 
 Se expone opcionalmente la consulta de solo lectura WebMCP `read_month_summary` si el navegador la admite; usa los mismos cálculos que la interfaz.
+
+## Publicar en Vercel
+
+Vercel detecta `server.mjs` y lo convierte en una función; los archivos de `public/` se sirven desde su CDN. Node 22 (`engines` en `package.json`).
+
+1. Crear la base de producción en Turso y aplicar las migraciones desde este equipo, con `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN` de esa base en `.env`: `npm run db:migrate`.
+2. En Vercel: Add New > Project > importar `Haironch/juntos-finanzas`, sin framework ni comando de build.
+3. En Settings > Environment Variables (Production): `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `BETTER_AUTH_SECRET` (uno nuevo, distinto al local), `BETTER_AUTH_URL=https://<dominio>`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ALLOWED_EMAILS`. Volver a desplegar después de cambiarlas.
+4. En Google Auth Platform > Clientes, agregar el URI de redirección `https://<dominio>/api/auth/callback/google`.
+5. Comprobar `https://<dominio>/api/auth/ok` → `{"ok":true}`.
+
+Cada nueva migración se aplica con `npm run db:migrate` apuntando a la base de producción antes de desplegar el código que la usa.

@@ -1,4 +1,4 @@
-// Solo servidor: el token de Turso nunca debe llegar a dist/ ni al navegador.
+// Solo servidor: el token de Turso nunca debe llegar a public/ ni al navegador.
 import {createHash} from 'node:crypto';
 import {mkdirSync, readdirSync, readFileSync} from 'node:fs';
 import {createClient} from '@libsql/client';
@@ -9,6 +9,8 @@ export const LOCAL_URL = new URL('.data/juntos.db', ROOT).href;
 
 // Sin TURSO_DATABASE_URL se usa la base local .data/juntos.db.
 export function connect(env = process.env) {
+  // En Vercel no hay disco persistente: la base local no sirve y se exige Turso.
+  if (env.VERCEL && !env.TURSO_DATABASE_URL) throw new Error('Falta TURSO_DATABASE_URL en las variables de entorno de Vercel');
   const url = env.TURSO_DATABASE_URL || LOCAL_URL;
   if (url === LOCAL_URL) mkdirSync(new URL('.data/', ROOT), {recursive: true});
   const remote = !url.startsWith('file:') && url !== ':memory:';

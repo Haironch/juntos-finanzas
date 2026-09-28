@@ -9,6 +9,8 @@ import {createApi, json} from './server/api.mjs';
 const envFile = new URL('./.env', import.meta.url);
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 
+// En Vercel este archivo se convierte en una función; los archivos de public/ los sirve su CDN.
+const ON_VERCEL = Boolean(process.env.VERCEL);
 const PORT = Number(process.env.PORT) || 5173;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const files = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/finance.js': 'finance.js', '/styles.css': 'styles.css', '/favicon.svg': 'favicon.svg'};
@@ -28,6 +30,9 @@ if (missing.length) {
     getSession: req => auth.api.getSession({headers: fromNodeHeaders(req.headers)}),
     appOrigin: new URL(process.env.BETTER_AUTH_URL).origin,
   });
+}
+// Solo en local: avisar de configuración y migraciones pendientes (en Vercel las migraciones no viajan con la función).
+if (auth && !ON_VERCEL) {
   // Google solo acepta el callback exacto; localhost puede resolver a otro servidor (p. ej. Vite en [::1]).
   if (new URL(process.env.BETTER_AUTH_URL).origin !== ORIGIN) console.warn(`BETTER_AUTH_URL debería ser ${ORIGIN}.`);
   const {rows} = await db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_migrations'");
@@ -49,12 +54,12 @@ async function staticFile(res, pathname) {
     res.writeHead(404);
     return res.end('No encontrado');
   }
-  const body = await readFile(new URL('./dist/' + file, import.meta.url));
+  const body = await readFile(new URL('./public/' + file, import.meta.url));
   res.writeHead(200, {'Content-Type': types[file.split('.').pop()], 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff'});
   res.end(body);
 }
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const {pathname} = new URL(req.url, 'http://localhost');
   try {
     if (pathname.startsWith('/api/')) await api(req, res, pathname);
@@ -68,4 +73,6 @@ http.createServer(async (req, res) => {
       res.end('No se pudo abrir la aplicación');
     }
   }
-}).listen(PORT, '127.0.0.1', () => console.log(`Local: ${ORIGIN}`));
+});
+if (ON_VERCEL) server.listen(PORT);
+else server.listen(PORT, '127.0.0.1', () => console.log(`Local: ${ORIGIN}`));

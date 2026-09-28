@@ -61,7 +61,7 @@ Montos siempre en centavos enteros (`amountCents`); fechas `AAAA-MM-DD`; las per
 
 | Ruta | Qué hace |
 | --- | --- |
-| `GET /api/months/:month` | `{month, transactions, goal, summary}` del mes (`2026-09`). `summary` trae `income`, `expense` y `balance` por posición y los totales, con los mismos cálculos que `dist/finance.js`. Sin arrastre entre meses. |
+| `GET /api/months/:month` | `{month, transactions, goal, summary}` del mes (`2026-09`). `summary` trae `income`, `expense` y `balance` por posición y los totales, con los mismos cálculos que `public/finance.js`. Sin arrastre entre meses. |
 | `POST /api/transactions` `{kind, scope, amountCents, description, occurredOn, category, owner?}` | `owner` (`blue`/`pink`) solo en personales. Los ingresos son siempre personales; sin categoría quedan en `Otros`. Un gasto compartido requiere que la pareja se haya unido. |
 | `PATCH /api/transactions/:id` `{version, ...campos}` | Edición parcial; se valida el resultado completo. Pasar a `shared` limpia `owner`. |
 | `DELETE /api/transactions/:id` `{version}` | Elimina el movimiento. |
@@ -72,7 +72,7 @@ Ediciones simultáneas: toda edición o borrado exige la `version` que se leyó.
 
 ## Integración pendiente
 
-1. Aplicar las migraciones en una base de desarrollo de Turso (`npm run db:migrate` con `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN` en `.env`), luego en producción. Nunca poner esas variables en `dist/`, Git ni el navegador.
+1. Aplicar las migraciones en una base de desarrollo de Turso (`npm run db:migrate` con `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN` en `.env`), luego en producción. Nunca poner esas variables en `public/`, Git ni el navegador.
 2. Conectar la interfaz a la API (botón de Google, crear hogar, compartir código, elegir color) manteniendo el modo local.
 3. Importar los datos locales de forma transaccional e idempotente tras vincular `him` con azul y `her` con rosa. No importar el modo de ejemplo.
 4. Despliegue en Vercel: adaptar `server.mjs` a funciones y configurar las variables de entorno allí.

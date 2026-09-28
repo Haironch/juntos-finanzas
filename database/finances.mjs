@@ -221,7 +221,7 @@ export async function getMonth(client, userId, month) {
   }
 }
 
-// Mismos conceptos que summary() de dist/finance.js: gastos en positivo, saldo = ingresos - gastos.
+// Mismos conceptos que summary() de public/finance.js: gastos en positivo, saldo = ingresos - gastos.
 function summarize(totals) {
   const zero = () => ({blue: 0, pink: 0});
   const income = zero(), expense = zero(), balance = zero();

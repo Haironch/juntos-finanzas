@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cents,allocation,summary,validateTransaction} from '../dist/finance.js';
+import {cents,allocation,summary,validateTransaction} from '../public/finance.js';
 const transaction=(props={})=>({id:'1',kind:'expense',person:'him',scope:'shared',amount:10000,date:'2026-09-15',category:'Hogar',description:'Ejemplo',...props});
 test('Convierte dinero sin perder centavos y rechaza importes inválidos',()=>{assert.equal(cents('8000'),800000);assert.equal(cents('0.29'),29);for(const value of ['-1','0','1.005','NaN','Infinity','1e3',''])assert.throws(()=>cents(value));});
 test('Un gasto compartido conserva cada centavo',()=>{assert.deepEqual(allocation(transaction()),[-5000,-5000]);assert.deepEqual(allocation(transaction({amount:101})),[-50,-51]);});

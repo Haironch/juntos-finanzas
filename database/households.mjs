@@ -1,49 +1,14 @@
 // Hogar e invitaciones. userId siempre viene de la sesión (tabla users), nunca del navegador.
 import {createHash, randomInt, randomUUID} from 'node:crypto';
+import {HttpError, memberContext, NOW, requiredText, write} from './common.mjs';
 
 export const COLORS = ['blue', 'pink', 'green', 'purple', 'orange', 'teal'];
 // Sin 0/O ni 1/I para poder dictar el código. 12 caracteres de 32 posibles = 60 bits.
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 12;
 const INVITE_DAYS = 7;
-const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
-
-export class HttpError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
-}
-
 export const normalizeCode = code => String(code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const hashCode = code => createHash('sha256').update(normalizeCode(code)).digest('hex');
-
-function requiredText(value, label, max) {
-  const text = typeof value === 'string' ? value.trim() : '';
-  if (!text || text.length > max) throw new HttpError(400, `${label} debe tener entre 1 y ${max} caracteres`);
-  return text;
-}
-
-// Abre una transacción de escritura; se revierte si fn lanza un error.
-async function write(client, fn) {
-  const tx = await client.transaction('write');
-  try {
-    const result = await fn(tx);
-    await tx.commit();
-    return result;
-  } finally {
-    tx.close();
-  }
-}
-
-async function membership(tx, userId) {
-  const {rows: [row]} = await tx.execute({
-    sql: `SELECT m.household_id, (SELECT count(*) FROM household_members WHERE household_id = m.household_id) AS members
-          FROM household_members m WHERE m.user_id = ?`,
-    args: [userId],
-  });
-  return row ? {householdId: row.household_id, members: Number(row.members)} : null;
-}
 
 export async function getHousehold(client, userId) {
   const {rows} = await client.execute({
@@ -67,7 +32,7 @@ export async function createHousehold(client, userId, body = {}) {
   const name = requiredText(body.name, 'El nombre del hogar', 60);
   const displayName = requiredText(body.displayName, 'Tu nombre', 24);
   await write(client, async tx => {
-    if (await membership(tx, userId)) throw new HttpError(409, 'Ya perteneces a un hogar');
+    if (await memberContext(tx, userId)) throw new HttpError(409, 'Ya perteneces a un hogar');
     const householdId = randomUUID();
     await tx.execute({sql: 'INSERT INTO households(id, name) VALUES (?, ?)', args: [householdId, name]});
     await tx.execute({
@@ -81,7 +46,7 @@ export async function createHousehold(client, userId, body = {}) {
 // Un código nuevo reemplaza a los anteriores sin usar. Solo se devuelve una vez; se guarda su hash.
 export async function createInvite(client, userId) {
   return write(client, async tx => {
-    const member = await membership(tx, userId);
+    const member = await memberContext(tx, userId);
     if (!member) throw new HttpError(403, 'Primero crea un hogar');
     if (member.members >= 2) throw new HttpError(409, 'El hogar ya tiene dos miembros');
     await tx.execute({sql: 'DELETE FROM household_invites WHERE household_id = ? AND used_at IS NULL', args: [member.householdId]});
@@ -101,7 +66,7 @@ export async function joinHousehold(client, userId, body = {}) {
   const code = normalizeCode(body.code);
   if (code.length !== CODE_LENGTH) throw new HttpError(400, 'Código inválido o vencido');
   await write(client, async tx => {
-    if (await membership(tx, userId)) throw new HttpError(409, 'Ya perteneces a un hogar');
+    if (await memberContext(tx, userId)) throw new HttpError(409, 'Ya perteneces a un hogar');
     const {rows: [invite]} = await tx.execute({
       sql: `SELECT household_id FROM household_invites WHERE code_hash = ? AND used_at IS NULL AND expires_at > ${NOW}`,
       args: [hashCode(code)],
@@ -133,7 +98,7 @@ export async function updateMember(client, userId, body = {}) {
   }
   if (!Object.keys(changes).length) throw new HttpError(400, 'Indica displayName o color');
   await write(client, async tx => {
-    const member = await membership(tx, userId);
+    const member = await memberContext(tx, userId);
     if (!member) throw new HttpError(403, 'Primero crea un hogar o únete a uno');
     if (changes.color) {
       const {rows} = await tx.execute({

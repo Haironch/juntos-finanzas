@@ -1,50 +1,10 @@
 import assert from 'node:assert/strict';
-import {mkdtempSync, rmSync} from 'node:fs';
-import http from 'node:http';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
 import {afterEach, beforeEach, test} from 'node:test';
-import {createClient} from '@libsql/client';
-import {migrate} from '../database/db.mjs';
-import {createApi} from '../server/api.mjs';
+import {startApi} from './api-helpers.mjs';
 
-// API real sobre HTTP; la sesión se simula con el encabezado x-test-user en lugar de Google.
-let folder, db, server, base;
-
-beforeEach(async () => {
-  folder = mkdtempSync(join(tmpdir(), 'juntos-home-'));
-  db = createClient({url: 'file:' + join(folder, 'test.db')});
-  await migrate(db);
-  const handle = createApi({
-    db,
-    appOrigin: 'http://app.test',
-    getSession: async req => req.headers['x-test-user'] ? {user: {id: req.headers['x-test-user'], name: 'Prueba', email: 'p@ejemplo.com', image: null}} : null,
-  });
-  server = http.createServer((req, res) => handle(req, res, new URL(req.url, 'http://x').pathname));
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  base = `http://127.0.0.1:${server.address().port}`;
-});
-
-afterEach(async () => {
-  await new Promise(resolve => server.close(resolve));
-  db.close();
-  rmSync(folder, {recursive: true, force: true});
-});
-
-async function call(user, method, path, body, headers = {}) {
-  const response = await fetch(base + path, {
-    method,
-    headers: {...(user && {'x-test-user': user}), ...(method !== 'GET' && {Origin: 'http://app.test', 'Content-Type': 'application/json'}), ...headers},
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  return {status: response.status, body: await response.json()};
-}
-
-async function couple() {
-  await call('azul', 'POST', '/api/household', {name: 'Casa', displayName: 'Hairon'});
-  const {body: {code}} = await call('azul', 'POST', '/api/household/invite', {});
-  return call('rosa', 'POST', '/api/household/join', {code, displayName: 'Pareja'});
-}
+let db, call, couple, stop;
+beforeEach(async () => ({db, call, couple, stop} = await startApi()));
+afterEach(() => stop());
 
 test('sin sesión responde 401 y sin hogar devuelve household null', async () => {
   assert.equal((await call(null, 'GET', '/api/me')).status, 401);

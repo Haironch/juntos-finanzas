@@ -1,6 +1,6 @@
 # Base de datos de Juntos
 
-Estado: migraciones 001 (datos), 002 (sesiones) y 003 (colores e invitaciones) probadas con el cliente libSQL (`@libsql/client`) sobre un archivo local. Inicio de sesión con Google (Better Auth) y `GET /api/me` listos en el servidor. API de hogar e invitaciones lista. Todavía NO se aplicó en Turso, NO hay endpoints de movimientos/metas y la interfaz sigue usando el guardado del navegador.
+Estado: migraciones 001 (datos), 002 (sesiones) y 003 (colores e invitaciones) probadas con el cliente libSQL (`@libsql/client`) sobre un archivo local. Inicio de sesión con Google (Better Auth) y `GET /api/me` listos en el servidor. API de hogar, movimientos, metas y resumen mensual lista. Todavía NO se aplicó en Turso y la interfaz sigue usando el guardado del navegador.
 
 ## Modelo
 
@@ -55,12 +55,26 @@ Todas requieren sesión. Las que modifican datos exigen `Origin` igual a `BETTER
 
 Para intercambiar colores, una persona elige primero un tercer color.
 
+## API de movimientos y metas
+
+Montos siempre en centavos enteros (`amountCents`); fechas `AAAA-MM-DD`; las personas se identifican por su posición `blue`/`pink`. Ambos miembros pueden editar cualquier movimiento del hogar; `createdBy` conserva quién lo registró.
+
+| Ruta | Qué hace |
+| --- | --- |
+| `GET /api/months/:month` | `{month, transactions, goal, summary}` del mes (`2026-09`). `summary` trae `income`, `expense` y `balance` por posición y los totales, con los mismos cálculos que `dist/finance.js`. Sin arrastre entre meses. |
+| `POST /api/transactions` `{kind, scope, amountCents, description, occurredOn, category, owner?}` | `owner` (`blue`/`pink`) solo en personales. Los ingresos son siempre personales; sin categoría quedan en `Otros`. Un gasto compartido requiere que la pareja se haya unido. |
+| `PATCH /api/transactions/:id` `{version, ...campos}` | Edición parcial; se valida el resultado completo. Pasar a `shared` limpia `owner`. |
+| `DELETE /api/transactions/:id` `{version}` | Elimina el movimiento. |
+| `PUT /api/months/:month/goal` `{name, amountCents, version?}` | Sin `version` crea la meta; con la `version` actual la reemplaza. |
+| `DELETE /api/months/:month/goal` `{version}` | Elimina la meta del mes. |
+
+Ediciones simultáneas: toda edición o borrado exige la `version` que se leyó. Si la pareja cambió el dato antes, la API responde 409 con `current` (el dato vigente) para mostrarlo y decidir, en lugar de sobrescribirlo. Movimientos de otro hogar responden 404.
+
 ## Integración pendiente
 
 1. Aplicar las migraciones en una base de desarrollo de Turso (`npm run db:migrate` con `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN` en `.env`), luego en producción. Nunca poner esas variables en `dist/`, Git ni el navegador.
-2. API de movimientos y metas: `household_id` y `created_by` salen siempre de la sesión, nunca del navegador. Una FK valida pertenencia, NO reemplaza autorización. Consultas parametrizadas acotadas al hogar; editar con `WHERE household_id=? AND id=? AND version=?` y rechazar conflictos.
-3. Conectar la interfaz a la API (botón de Google, crear hogar, compartir código, elegir color) manteniendo el modo local.
-4. Importar los datos locales de forma transaccional e idempotente tras vincular `him` con azul y `her` con rosa. No importar el modo de ejemplo.
-5. Despliegue en Vercel: adaptar `server.mjs` a funciones y configurar las variables de entorno allí.
+2. Conectar la interfaz a la API (botón de Google, crear hogar, compartir código, elegir color) manteniendo el modo local.
+3. Importar los datos locales de forma transaccional e idempotente tras vincular `him` con azul y `her` con rosa. No importar el modo de ejemplo.
+4. Despliegue en Vercel: adaptar `server.mjs` a funciones y configurar las variables de entorno allí.
 
-Pruebas: `tests/schema.test.mjs` (9) cubre reparto, totales, datos inválidos, referencias entre hogares, límite de miembros, metas y el migrador; `tests/auth.test.mjs` (5) cubre variables faltantes, lista de correos, redirección a Google, orígenes ajenos y el vínculo con `users`; `tests/households.test.mjs` (8) recorre la API por HTTP: crear, invitar, unirse, códigos usados/vencidos/reemplazados, segundo hogar, colores distintos, reparto intacto al cambiar colores y rechazo de otros orígenes. Repetirlas contra Turso al conectarlo.
+Pruebas: `tests/schema.test.mjs` (9) cubre reparto, totales, datos inválidos, referencias entre hogares, límite de miembros, metas y el migrador; `tests/auth.test.mjs` (5) cubre variables faltantes, lista de correos, redirección a Google, orígenes ajenos y el vínculo con `users`; `tests/households.test.mjs` (8) recorre la API por HTTP: crear, invitar, unirse, códigos usados/vencidos/reemplazados, segundo hogar, colores distintos, reparto intacto al cambiar colores y rechazo de otros orígenes; `tests/finances.test.mjs` (10) cubre el resumen frente al motor local, autoría, validaciones, hogar incompleto, versiones y conflictos, borrado, aislamiento entre hogares, metas y escrituras simultáneas. Repetirlas contra Turso al conectarlo.

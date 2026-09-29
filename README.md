@@ -1,6 +1,8 @@
 # Juntos · Finanzas en pareja
 
-El esquema de la próxima versión compartida está preparado en [database/README.md](database/README.md), con migraciones SQLite/libSQL, el migrador `npm run db:migrate`, inicio de sesión con Google (Better Auth) en el servidor y pruebas locales. Todavía no está conectado a la interfaz ni aplicado en Turso. La configuración va en `.env` (ver `.env.example`); sin ella la app local funciona igual. El puerto se cambia con `PORT`.
+En producción en https://juntos-finanzas.vercel.app (Vercel + Turso). Cada persona entra con Google; quien crea el hogar comparte un código de un solo uso y la pareja se une con él. Los movimientos y metas se guardan en el servidor y ambos ven lo mismo, cada quien con su color. Detalles de datos y API en [database/README.md](database/README.md).
+
+En local, la configuración va en `.env` (ver `.env.example`). Sin ella, `npm run dev` abre la versión local de siempre, que guarda en el navegador. El puerto se cambia con `PORT`.
 
 Primera versión local en español y quetzales. Abrir http://127.0.0.1:5173 después de ejecutar `npm run dev` desde esta carpeta. Requiere Node.js 22; ejecutar `npm install` una vez (cliente libSQL para la base de datos). `npm test` verifica los cálculos y `npm run check` revisa la sintaxis.
 

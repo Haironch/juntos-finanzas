@@ -1,6 +1,6 @@
 # Base de datos de Juntos
 
-Estado: migraciones 001 (datos), 002 (sesiones) y 003 (colores e invitaciones) probadas con el cliente libSQL (`@libsql/client`) sobre un archivo local. Inicio de sesión con Google (Better Auth) y `GET /api/me` listos en el servidor. API de hogar, movimientos, metas y resumen mensual lista. Todavía NO se aplicó en Turso y la interfaz sigue usando el guardado del navegador.
+Estado: migraciones 001 (datos), 002 (sesiones) y 003 (colores e invitaciones) probadas con el cliente libSQL (`@libsql/client`) sobre un archivo local. Inicio de sesión con Google (Better Auth) y `GET /api/me` listos en el servidor. API de hogar, movimientos, metas y resumen mensual lista. Aplicado en Turso (producción) y conectado a la interfaz mediante `public/cloud.js`.
 
 ## Modelo
 
@@ -70,11 +70,13 @@ Montos siempre en centavos enteros (`amountCents`); fechas `AAAA-MM-DD`; las per
 
 Ediciones simultáneas: toda edición o borrado exige la `version` que se leyó. Si la pareja cambió el dato antes, la API responde 409 con `current` (el dato vigente) para mostrarlo y decidir, en lugar de sobrescribirlo. Movimientos de otro hogar responden 404.
 
-## Integración pendiente
+## Interfaz
 
-1. Aplicar las migraciones en una base de desarrollo de Turso (`npm run db:migrate` con `TURSO_DATABASE_URL` y `TURSO_AUTH_TOKEN` en `.env`), luego en producción. Nunca poner esas variables en `public/`, Git ni el navegador.
-2. Conectar la interfaz a la API (botón de Google, crear hogar, compartir código, elegir color) manteniendo el modo local.
-3. Importar los datos locales de forma transaccional e idempotente tras vincular `him` con azul y `her` con rosa. No importar el modo de ejemplo.
-4. Despliegue en Vercel: adaptar `server.mjs` a funciones y configurar las variables de entorno allí.
+`public/cloud.js` consulta `/api/me` al abrir la app: 503 → versión local (localStorage); 401 → pantalla de entrada con Google; sin hogar → crear hogar o unirse con código; con hogar → modo compartido. En ese modo `app.js` guarda cada operación en la API, recarga el mes desde el servidor y, ante un 409, muestra la versión de la pareja en el formulario. Los colores de cada persona se aplican como variables CSS (`--p1-*` para blue, `--p2-*` para pink).
+
+## Pendiente
+
+1. Importar los datos de la versión local (localStorage) de forma transaccional e idempotente, si existen. No importar el modo de ejemplo.
+2. Mostrar los cambios de la pareja sin recargar (hoy se actualiza al volver a la pestaña o al cambiar de mes).
 
 Pruebas: `tests/schema.test.mjs` (9) cubre reparto, totales, datos inválidos, referencias entre hogares, límite de miembros, metas y el migrador; `tests/auth.test.mjs` (5) cubre variables faltantes, lista de correos, redirección a Google, orígenes ajenos y el vínculo con `users`; `tests/households.test.mjs` (8) recorre la API por HTTP: crear, invitar, unirse, códigos usados/vencidos/reemplazados, segundo hogar, colores distintos, reparto intacto al cambiar colores y rechazo de otros orígenes; `tests/finances.test.mjs` (10) cubre el resumen frente al motor local, autoría, validaciones, hogar incompleto, versiones y conflictos, borrado, aislamiento entre hogares, metas y escrituras simultáneas. Repetirlas contra Turso al conectarlo.

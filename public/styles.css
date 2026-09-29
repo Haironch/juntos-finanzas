@@ -64,3 +64,20 @@ body.gated{overflow:hidden}
 .invite-code{font-family:Manrope,monospace;font-size:clamp(20px,6vw,28px);font-weight:800;letter-spacing:2px;text-align:center;background:#f4f7f6;border:1px dashed #cfdad5;border-radius:10px;padding:16px;margin-bottom:12px;user-select:all}
 .invite-banner{background:#f4f1fb;border-color:#e3dcf3;color:#63578a}
 @media(max-width:720px){.gate-card{padding:26px 20px}.gate-options{grid-template-columns:1fr}}
+/* Gastos compartidos pendientes de transferencia */
+.settle-check{display:flex;gap:10px;align-items:flex-start;border:1px solid #dfe6e3;border-radius:10px;padding:12px 14px;margin:-4px 0 19px;cursor:pointer;font-size:14px;font-weight:550;color:#395348}
+.settle-check input{margin-top:3px;width:16px;height:16px;accent-color:#357b62;flex-shrink:0}
+.settle-check small{display:block;font-size:11px;font-weight:400;color:#8d9c92;margin-top:4px;line-height:1.5}
+.settle-check:has(input:checked){border-color:#5c9078;background:#eff7f2}
+.owner.shared.pending{background:#fff6e6;color:#a4742a}
+.pending-card{background:#fffaf0;border:1px solid #f2e3c4;border-radius:13px;padding:22px 24px;margin-top:20px}
+.pending-card h3{font-size:15px}
+.pending-total{font-size:14px;color:#8a6a33;margin:6px 0 14px}
+.pending-total b{font-size:20px;color:#7a5a22;font-family:Manrope,sans-serif;margin-left:4px}
+.pending-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.pending-list li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px;background:#fff;border:1px solid #f1e6cf;border-radius:10px;padding:12px 14px}
+.pending-list strong{font-size:14px;overflow-wrap:anywhere}
+.pending-list small{display:block;font-size:11px;color:#9aa6ad;margin-top:4px}
+.pending-amount{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#7a5a22;white-space:nowrap}
+.pending-list .button{min-height:36px;padding:8px 12px;font-size:13px}
+@media(max-width:720px){.pending-card{padding:18px}.pending-list li{grid-template-columns:1fr;gap:8px}.pending-list .button{width:100%}}

@@ -185,9 +185,15 @@ const toLocalTransaction = t => ({
   description: t.description,
   date: t.occurredOn,
   category: t.category,
-  // En un gasto compartido la app muestra quién lo registró.
-  person: PERSON[t.scope === 'personal' ? t.owner : t.createdBy],
+  // En un gasto compartido, person es quién pagó.
+  person: PERSON[t.scope === 'personal' ? t.owner : t.paidBy],
+  ...(t.scope === 'shared' && {settled: t.settled, pendingCents: t.pendingCents}),
   version: t.version,
+});
+
+const toLocalPending = pending => ({
+  items: pending.items.map(toLocalTransaction),
+  balance: pending.balance && {from: PERSON[pending.balance.from], to: PERSON[pending.balance.to], cents: pending.balance.cents},
 });
 
 export async function loadMonth(month) {
@@ -195,8 +201,12 @@ export async function loadMonth(month) {
   return {
     transactions: data.transactions.map(toLocalTransaction),
     goal: data.goal && {name: data.goal.name, amount: data.goal.amountCents, version: data.goal.version},
+    pending: toLocalPending(data.pending),
   };
 }
+
+// Marca como transferidos los gastos indicados (con la versión que se vio en pantalla).
+export const settle = items => request('POST', '/api/pending/settle', {items: items.map(({id, version}) => ({id, version}))});
 
 export function saveTransaction(t, existing) {
   const body = {
@@ -207,6 +217,7 @@ export function saveTransaction(t, existing) {
     occurredOn: t.date,
     category: t.kind === 'income' ? existing?.category || 'Otros' : t.category,
     ...(t.scope === 'personal' && {owner: SLOT[t.person]}),
+    ...(t.scope === 'shared' && {paidBy: SLOT[t.person], settled: t.settled === true}),
   };
   if (!existing) return request('POST', '/api/transactions', body);
   return request('PATCH', `/api/transactions/${encodeURIComponent(existing.id)}`, {...body, version: existing.version});

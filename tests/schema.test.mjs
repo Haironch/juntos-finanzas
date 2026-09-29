@@ -28,10 +28,12 @@ afterEach(() => {
   rmSync(folder, {recursive: true, force: true});
 });
 
-function add({id = 't', amount = 101, kind = 'expense', scope = 'shared', owner = null, creator = 'a', date = '2026-09-28', home = 'home'} = {}) {
+// Por defecto un compartido lo pagó quien lo registra y ya está saldado (mitad y mitad).
+function add({id = 't', amount = 101, kind = 'expense', scope = 'shared', owner = null, creator = 'a', date = '2026-09-28', home = 'home', payer = scope === 'shared' ? creator : null, settled = scope === 'shared'} = {}) {
   return db.execute({
-    sql: 'INSERT INTO transactions(id,household_id,kind,scope,amount_cents,description,occurred_on,category,owner_user_id,created_by) VALUES (?,?,?,?,?,?,?,?,?,?)',
-    args: [id, home, kind, scope, amount, 'Ejemplo', date, 'Hogar', owner, creator],
+    sql: `INSERT INTO transactions(id,household_id,kind,scope,amount_cents,description,occurred_on,category,owner_user_id,created_by,paid_by,settled_at,settled_by)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,CASE WHEN ? THEN '2026-09-30T00:00:00.000Z' END,?)`,
+    args: [id, home, kind, scope, amount, 'Ejemplo', date, 'Hogar', owner, creator, payer, settled ? 1 : 0, settled ? creator : null],
   });
 }
 
@@ -98,4 +100,27 @@ test('una migración fallida no deja cambios parciales', async () => {
   await assert.rejects(migrate(db, [...readMigrations(), broken]));
   assert.equal(await value("SELECT count(*) FROM sqlite_master WHERE name='temporal'"), 0);
   assert.equal(await value("SELECT count(*) FROM schema_migrations WHERE name='999_broken.sql'"), 0);
+});
+
+test('la migración 004 deja saldados los compartidos que ya existían, sin cambiar saldos', async () => {
+  const upgradeFolder = mkdtempSync(join(tmpdir(), 'juntos-upgrade-'));
+  const old = createClient({url: 'file:' + join(upgradeFolder, 'test.db')});
+  try {
+    const migrations = readMigrations();
+    await migrate(old, migrations.filter(m => m.name < '004'));
+    await old.batch([
+      "INSERT INTO users(id,auth_issuer,auth_subject) VALUES ('a','test','a'),('b','test','b')",
+      "INSERT INTO households(id,name) VALUES ('home','Juntos')",
+      "INSERT INTO household_members(household_id,user_id,slot,color,display_name) VALUES ('home','a','blue','blue','Él'),('home','b','pink','pink','Ella')",
+      "INSERT INTO transactions(id,household_id,kind,scope,amount_cents,description,occurred_on,category,created_by) VALUES ('t','home','expense','shared',101,'Súper','2026-09-28','Hogar','b')",
+    ], 'write');
+    assert.deepEqual(await migrate(old, migrations), ['004_settlements.sql']);
+    const {rows: [t]} = await old.execute('SELECT paid_by, settled_by, settled_at IS NOT NULL AS settled FROM transactions');
+    assert.deepEqual([t.paid_by, t.settled_by, t.settled], ['b', 'b', 1]);
+    const {rows} = await old.execute('SELECT slot, signed_amount_cents FROM transaction_allocations ORDER BY slot');
+    assert.deepEqual(rows.map(row => [row.slot, row.signed_amount_cents]), [['blue', -50], ['pink', -51]]);
+  } finally {
+    old.close();
+    rmSync(upgradeFolder, {recursive: true, force: true});
+  }
 });

@@ -6,6 +6,11 @@ import {HttpError, memberContext, NOW, requiredText, write} from './common.mjs';
 export const CATEGORIES = ['Hogar', 'Supermercado', 'Comida', 'Transporte', 'Salud', 'Ocio', 'Compras', 'Otros'];
 const MAX_CENTS = 100_000_000_000;
 const SLOTS = ['blue', 'pink'];
+const OTHER = {blue: 'pink', pink: 'blue'};
+const MAX_SETTLE = 500;
+
+// Parte de cada posición en un gasto compartido: el centavo impar es de pink, igual que en la vista.
+export const shareOf = (amountCents, slot) => slot === 'blue' ? Math.floor(amountCents / 2) : amountCents - Math.floor(amountCents / 2);
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export function parseMonth(month) {
@@ -47,13 +52,19 @@ function validTransaction(input, context) {
   if (input.kind === 'income' && input.scope === 'shared') throw new HttpError(400, 'Un ingreso siempre es personal');
   const category = input.category ?? (input.kind === 'income' ? 'Otros' : undefined);
   if (!CATEGORIES.includes(category)) throw new HttpError(400, `Categoría inválida. Opciones: ${CATEGORIES.join(', ')}`);
-  let ownerUserId = null;
+  let ownerUserId = null, paidByUserId = null, settled = false;
   if (input.scope === 'personal') {
     if (!SLOTS.includes(input.owner)) throw new HttpError(400, 'owner debe ser blue o pink en un movimiento personal');
     ownerUserId = context.users[input.owner];
     if (!ownerUserId) throw new HttpError(409, 'Esa persona todavía no se ha unido al hogar');
-  } else if (context.members < 2) {
-    throw new HttpError(409, 'Un gasto compartido requiere que tu pareja se una al hogar');
+  } else {
+    if (context.members < 2) throw new HttpError(409, 'Un gasto compartido requiere que tu pareja se una al hogar');
+    // Por defecto pagó quien lo registra y queda pendiente de transferencia.
+    const paidBy = input.paidBy ?? context.mySlot;
+    if (!SLOTS.includes(paidBy)) throw new HttpError(400, 'paidBy debe ser blue o pink');
+    paidByUserId = context.users[paidBy];
+    if (input.settled != null && typeof input.settled !== 'boolean') throw new HttpError(400, 'settled debe ser true o false');
+    settled = input.settled === true;
   }
   return {
     kind: input.kind,
@@ -63,11 +74,13 @@ function validTransaction(input, context) {
     occurredOn: date(input.occurredOn),
     category,
     ownerUserId,
+    paidByUserId,
+    settled,
   };
 }
 
 const TRANSACTION_COLUMNS = `id, kind, scope, amount_cents, description, occurred_on, category,
-  owner_user_id, created_by, version, created_at, updated_at`;
+  owner_user_id, created_by, paid_by, settled_at, settled_by, version, created_at, updated_at`;
 
 function toTransaction(row, context) {
   return {
@@ -80,6 +93,12 @@ function toTransaction(row, context) {
     category: row.category,
     owner: row.owner_user_id ? context.slots[row.owner_user_id] : null,
     createdBy: context.slots[row.created_by],
+    // Solo gastos compartidos: quién pagó y si la otra persona ya transfirió su mitad.
+    paidBy: row.paid_by ? context.slots[row.paid_by] : null,
+    settled: row.scope === 'shared' ? row.settled_at !== null : null,
+    settledAt: row.settled_at,
+    settledBy: row.settled_by ? context.slots[row.settled_by] : null,
+    pendingCents: row.scope === 'shared' && row.settled_at === null ? shareOf(row.amount_cents, OTHER[context.slots[row.paid_by]]) : 0,
     version: row.version,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -106,9 +125,11 @@ export async function createTransaction(client, userId, body = {}) {
     const context = await requireMember(tx, userId);
     const t = validTransaction(body, context);
     const {rows: [row]} = await tx.execute({
-      sql: `INSERT INTO transactions(id, household_id, kind, scope, amount_cents, description, occurred_on, category, owner_user_id, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING ${TRANSACTION_COLUMNS}`,
-      args: [randomUUID(), context.householdId, t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.category, t.ownerUserId, userId],
+      sql: `INSERT INTO transactions(id, household_id, kind, scope, amount_cents, description, occurred_on, category, owner_user_id, created_by,
+              paid_by, settled_at, settled_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN ${NOW} END, ?) RETURNING ${TRANSACTION_COLUMNS}`,
+      args: [randomUUID(), context.householdId, t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.category, t.ownerUserId, userId,
+        t.paidByUserId, t.settled ? 1 : 0, t.settled ? userId : null],
     });
     return toTransaction(row, context);
   });
@@ -122,14 +143,19 @@ export async function updateTransaction(client, userId, id, body = {}) {
     const row = await findTransaction(tx, context, id);
     assertVersion(row, expected, current => toTransaction(current, context));
     const current = toTransaction(row, context);
-    const merged = {...current, ...pick(body, ['kind', 'scope', 'amountCents', 'description', 'occurredOn', 'category', 'owner'])};
+    const merged = {...current, ...pick(body, ['kind', 'scope', 'amountCents', 'description', 'occurredOn', 'category', 'owner', 'paidBy', 'settled'])};
     if (merged.scope === 'shared') merged.owner = null;
     const t = validTransaction(merged, context);
+    // Una transferencia ya marcada conserva su fecha y autor; desmarcarla la vuelve pendiente.
     const {rows: [updated]} = await tx.execute({
       sql: `UPDATE transactions SET kind = ?, scope = ?, amount_cents = ?, description = ?, occurred_on = ?, category = ?,
-              owner_user_id = ?, version = version + 1, updated_at = ${NOW}
+              owner_user_id = ?, paid_by = ?,
+              settled_at = CASE WHEN ? THEN coalesce(settled_at, ${NOW}) END,
+              settled_by = CASE WHEN ? THEN coalesce(settled_by, ?) END,
+              version = version + 1, updated_at = ${NOW}
             WHERE household_id = ? AND id = ? AND version = ? RETURNING ${TRANSACTION_COLUMNS}`,
-      args: [t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.category, t.ownerUserId, context.householdId, row.id, expected],
+      args: [t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.category, t.ownerUserId, t.paidByUserId,
+        t.settled ? 1 : 0, t.settled ? 1 : 0, userId, context.householdId, row.id, expected],
     });
     return toTransaction(updated, context);
   });
@@ -144,6 +170,46 @@ export async function deleteTransaction(client, userId, id, body = {}) {
     await tx.execute({sql: 'DELETE FROM transactions WHERE household_id = ? AND id = ? AND version = ?', args: [context.householdId, row.id, expected]});
     return {deleted: row.id};
   });
+}
+
+// Marca como transferidos los gastos indicados con la versión que se vio. Si alguno cambió, no se marca ninguno.
+export async function settleTransactions(client, userId, body = {}) {
+  const items = body.items;
+  if (!Array.isArray(items) || !items.length || items.length > MAX_SETTLE) throw new HttpError(400, `items debe tener entre 1 y ${MAX_SETTLE} gastos`);
+  return write(client, async tx => {
+    const context = await requireMember(tx, userId);
+    for (const item of items) {
+      const row = await findTransaction(tx, context, item?.id);
+      assertVersion(row, version(item.version), current => toTransaction(current, context));
+      if (row.scope !== 'shared') throw new HttpError(400, 'Solo un gasto compartido se puede saldar');
+      if (row.settled_at !== null) continue;
+      await tx.execute({
+        sql: `UPDATE transactions SET settled_at = ${NOW}, settled_by = ?, version = version + 1, updated_at = ${NOW}
+              WHERE household_id = ? AND id = ? AND version = ?`,
+        args: [userId, context.householdId, row.id, row.version],
+      });
+    }
+    return pendingFor(tx, context);
+  });
+}
+
+// Gastos compartidos pendientes de cualquier mes y cuánto se deben en neto.
+async function pendingFor(executor, context) {
+  const {rows} = await executor.execute({
+    sql: `SELECT ${TRANSACTION_COLUMNS} FROM transactions
+          WHERE household_id = ? AND scope = 'shared' AND settled_at IS NULL ORDER BY occurred_on, created_at`,
+    args: [context.householdId],
+  });
+  const items = rows.map(row => toTransaction(row, context));
+  const owes = {blue: 0, pink: 0};
+  for (const item of items) owes[OTHER[item.paidBy]] += item.pendingCents;
+  const net = owes.blue - owes.pink;
+  const balance = net === 0 ? null : net > 0 ? {from: 'blue', to: 'pink', cents: net} : {from: 'pink', to: 'blue', cents: -net};
+  return {items, owes, balance};
+}
+
+export async function getPending(client, userId) {
+  return pendingFor(client, await requireMember(client, userId));
 }
 
 const pick = (source, keys) => Object.fromEntries(keys.filter(key => source[key] !== undefined).map(key => [key, source[key]]));
@@ -215,7 +281,13 @@ export async function getMonth(client, userId, month) {
             WHERE household_id = ? AND occurred_on >= ? AND occurred_on < ? GROUP BY slot, kind`,
       args: range,
     });
-    return {month, transactions: transactions.map(row => toTransaction(row, context)), goal: toGoal(goal), summary: summarize(totals)};
+    return {
+      month,
+      transactions: transactions.map(row => toTransaction(row, context)),
+      goal: toGoal(goal),
+      summary: summarize(totals),
+      pending: await pendingFor(tx, context),
+    };
   } finally {
     tx.close();
   }

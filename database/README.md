@@ -68,6 +68,17 @@ Montos siempre en centavos enteros (`amountCents`); fechas `AAAA-MM-DD`; las per
 | `PUT /api/months/:month/goal` `{name, amountCents, version?}` | Sin `version` crea la meta; con la `version` actual la reemplaza. |
 | `DELETE /api/months/:month/goal` `{version}` | Elimina la meta del mes. |
 
+### Gastos pagados por una persona
+
+Un gasto compartido guarda quién pagó (`paidBy`, por defecto quien lo registra) y si la otra persona ya transfirió su mitad (`settled`, por defecto `false`). Mientras está pendiente, quien pagó carga el gasto completo y la otra persona le debe su parte (`pendingCents`, con el centavo impar para pink). Al saldarlo se divide mitad y mitad **en el mes del gasto**. Los compartidos anteriores a la migración 004 quedaron saldados, sin cambiar saldos.
+
+| Ruta | Qué hace |
+| --- | --- |
+| `GET /api/pending` | `{items, owes, balance}`: gastos pendientes de cualquier mes, cuánto debe cada posición y el neto (`{from, to, cents}` o `null` si están a mano). También viene en `GET /api/months/:month` como `pending`. |
+| `POST /api/pending/settle` `{items: [{id, version}]}` | Marca como transferidos esos gastos. Si alguno cambió desde que se leyó, responde 409 y no marca ninguno. |
+
+`POST`/`PATCH /api/transactions` aceptan `paidBy` y `settled` en gastos compartidos; `settled: false` en un `PATCH` vuelve a dejarlo pendiente.
+
 Ediciones simultáneas: toda edición o borrado exige la `version` que se leyó. Si la pareja cambió el dato antes, la API responde 409 con `current` (el dato vigente) para mostrarlo y decidir, en lugar de sobrescribirlo. Movimientos de otro hogar responden 404.
 
 ## Interfaz

@@ -14,7 +14,7 @@ test('el resumen del mes coincide con el motor local, incluido el centavo impar'
   await couple();
   await add('azul', income('blue', 800000));
   await add('rosa', income('pink', 600000));
-  await add('azul', expense({amountCents: 200001}));
+  await add('azul', expense({amountCents: 200001, settled: true}));
   await add('rosa', expense({scope: 'personal', owner: 'pink', amountCents: 50000, category: 'Compras'}));
   await add('azul', expense({occurredOn: '2026-10-01', amountCents: 900000}));
   const {status, body} = await call('rosa', 'GET', '/api/months/2026-09');

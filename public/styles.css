@@ -9,3 +9,58 @@
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 .table-scroll{position:relative}
 @media(max-width:720px){.table-scroll{overflow:visible}table,tbody{display:block;width:100%;white-space:normal}thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;padding:17px 20px;border-top:1px solid var(--line)}tbody td,tbody td:first-child{border:0;padding:0}tbody td:nth-child(1){grid-column:1;grid-row:1}.movement-name strong{max-width:100%;white-space:normal;line-height:1.5}tbody td:nth-child(2){grid-column:1;grid-row:3;font-size:12px}tbody td:nth-child(3){grid-column:1;grid-row:2}tbody td:nth-child(4){grid-column:2;grid-row:1;align-self:center;font-size:13px}tbody td:nth-child(5){grid-column:2;grid-row:2/4;justify-self:end;align-self:center}.saving-main{min-width:0}.saving-copy{min-width:0;overflow-wrap:anywhere}.person-card h2{font-size:clamp(20px,5.5vw,26px)}}
+/* Colores por persona: p1 = quien creó el hogar (azul por defecto), p2 = su pareja (rosa). cloud.js los cambia según el color elegido. */
+:root{--p1-ink:#4974af;--p1-strong:#3e6dae;--p1-muted:#859ab3;--p1-mark:#7cabed;--p1-soft:#e6f0fd;--p1-bg1:#f0f6ff;--p1-bg2:#f7faff;--p1-line:#dde9f8;--p2-ink:#ab6581;--p2-strong:#b66989;--p2-muted:#b093a0;--p2-mark:#e89dbb;--p2-soft:#f9e8f0;--p2-bg1:#fcf1f6;--p2-bg2:#fff9fc;--p2-line:#f1e1e9}
+.balance-composition .blue,.dot.blue{background:var(--p1-mark)}
+.balance-composition .pink,.dot.pink{background:var(--p2-mark)}
+.person-card.him{--ink:var(--p1-ink);--strong:var(--p1-strong);--tone:var(--p1-muted);--mark:var(--p1-mark);--soft:var(--p1-soft);--bg1:var(--p1-bg1);--bg2:var(--p1-bg2);--edge:var(--p1-line)}
+.person-card.her{--ink:var(--p2-ink);--strong:var(--p2-strong);--tone:var(--p2-muted);--mark:var(--p2-mark);--soft:var(--p2-soft);--bg1:var(--p2-bg1);--bg2:var(--p2-bg2);--edge:var(--p2-line)}
+.person-card.him,.person-card.her{background:linear-gradient(120deg,var(--bg1),var(--bg2));border-color:var(--edge)}
+.person-card .person-heading{color:var(--ink)}
+.person-card .person-avatar{background:var(--soft)}
+.person-card .person-badge{color:var(--tone);background:var(--soft)}
+.person-card h2{color:var(--strong)}
+.person-card>p,.person-card .person-line{color:var(--tone)}
+.person-card .person-divider{background:var(--edge)}
+.person-card .person-line strong{color:var(--ink)}
+.person-card .person-track{background:var(--edge)}
+.person-card .person-track span{background:var(--mark)}
+.owner.him{background:var(--p1-soft);color:var(--p1-ink)}
+.owner.her{background:var(--p2-soft);color:var(--p2-ink)}
+.owner.shared{background:linear-gradient(90deg,var(--p1-soft),var(--p2-soft))}
+.blue-choice input:checked+span{background:var(--p1-soft);border-color:var(--p1-mark);color:var(--p1-ink)}
+.pink-choice input:checked+span{background:var(--p2-soft);border-color:var(--p2-mark);color:var(--p2-ink)}
+.couple,.avatar-button{background:var(--p1-soft);color:var(--p1-ink)}
+.couple span,.avatar-button span{background:var(--p2-soft);color:var(--p2-ink)}
+/* Entrada con Google y creación del hogar */
+.gate{position:fixed;inset:0;z-index:20;background:linear-gradient(140deg,#f0f6ff,#f7f9fb 45%,#fcf1f6);display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow-y:auto}
+body.gated{overflow:hidden}
+.gate-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:34px;width:min(620px,100%);box-shadow:0 20px 80px #16352f1a;margin:auto}
+.gate-card h1{margin-bottom:12px}
+.gate-card>p:not(.eyebrow):not(.form-error){font-size:15px;line-height:1.7;color:#72818a;margin-bottom:24px}
+.gate-brand{padding:0;font-size:30px;margin-bottom:28px}
+.gate-note{font-size:12px!important;color:#9aa6ad!important;margin:6px 0 0!important}
+.gate-card .form-error{margin:12px 0 0}
+.google-g{font-weight:800;background:#fff;color:#4285f4;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+.gate-options{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.gate-option{border:1px solid var(--line);border-radius:13px;padding:20px}
+.gate-option h2{font-size:17px;margin-bottom:16px}
+.gate-logout{margin-top:20px;font-size:12px;color:#8a979e}
+/* Ajustes de la versión compartida */
+.swatches{border:0;padding:0;margin:0 0 4px;display:flex;flex-wrap:wrap;gap:10px}
+.swatches legend{font-size:14px;margin-bottom:10px}
+.swatch{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:#7a8d83}
+.swatch input{position:absolute;opacity:0;pointer-events:none}
+.swatch span{width:34px;height:34px;border-radius:50%;background:var(--swatch);border:3px solid #fff;box-shadow:0 0 0 1px #dfe6e3}
+.swatch input:checked+span{box-shadow:0 0 0 2px #284137}
+.swatch input:focus-visible+span{outline:2px solid #5893e3;outline-offset:3px}
+.swatch input:disabled+span{opacity:.3}
+.swatch:has(input:disabled){cursor:not-allowed}
+.settings-section{border-top:1px solid #e7ece9;margin-top:22px;padding-top:20px}
+.settings-section h3{font-size:15px;margin-bottom:10px}
+.member-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:14px}
+.member-list li{display:flex;align-items:center;gap:8px}
+.member-list small{color:#9aa6ad}
+.invite-code{font-family:Manrope,monospace;font-size:clamp(20px,6vw,28px);font-weight:800;letter-spacing:2px;text-align:center;background:#f4f7f6;border:1px dashed #cfdad5;border-radius:10px;padding:16px;margin-bottom:12px;user-select:all}
+.invite-banner{background:#f4f1fb;border-color:#e3dcf3;color:#63578a}
+@media(max-width:720px){.gate-card{padding:26px 20px}.gate-options{grid-template-columns:1fr}}

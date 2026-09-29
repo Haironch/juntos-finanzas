@@ -13,7 +13,7 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 const ON_VERCEL = Boolean(process.env.VERCEL);
 const PORT = Number(process.env.PORT) || 5173;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
-const files = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/finance.js': 'finance.js', '/styles.css': 'styles.css', '/favicon.svg': 'favicon.svg'};
+const files = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/finance.js': 'finance.js', '/cloud.js': 'cloud.js', '/styles.css': 'styles.css', '/favicon.svg': 'favicon.svg'};
 const types = {html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', svg: 'image/svg+xml'};
 
 // Sin la configuración de sesión la app local sigue funcionando y /api responde 503.

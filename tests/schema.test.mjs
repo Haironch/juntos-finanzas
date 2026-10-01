@@ -137,9 +137,35 @@ test('la migración 005 deja cada movimiento existente en el mes de su fecha', a
       "INSERT INTO household_members(household_id,user_id,slot,color,display_name) VALUES ('home','a','blue','blue','Él')",
       "INSERT INTO transactions(id,household_id,kind,scope,amount_cents,description,occurred_on,category,owner_user_id,created_by) VALUES ('t','home','income','personal',800000,'Sueldo','2026-09-30','Otros','a','a')",
     ], 'write');
-    assert.deepEqual(await migrate(old, migrations), ['005_budget_month.sql']);
+    assert.deepEqual(await migrate(old, migrations.filter(m => m.name < '006')), ['005_budget_month.sql']);
     assert.equal(await old.execute('SELECT budget_month FROM transactions').then(r => r.rows[0].budget_month), '2026-09');
     assert.equal(await old.execute("SELECT sum(signed_amount_cents) AS s FROM transaction_allocations WHERE budget_month = '2026-09'").then(r => r.rows[0].s), 800000);
+  } finally {
+    old.close();
+    rmSync(upgradeFolder, {recursive: true, force: true});
+  }
+});
+
+test('la migración 006 no cambia los saldos de lo ya registrado', async () => {
+  const upgradeFolder = mkdtempSync(join(tmpdir(), 'juntos-upgrade-'));
+  const old = createClient({url: 'file:' + join(upgradeFolder, 'test.db')});
+  const totals = async () => (await old.execute('SELECT slot, sum(signed_amount_cents) AS c FROM transaction_allocations GROUP BY slot ORDER BY slot')).rows.map(r => [r.slot, r.c]);
+  try {
+    const migrations = readMigrations();
+    await migrate(old, migrations.filter(m => m.name < '006'));
+    await old.batch([
+      "INSERT INTO users(id,auth_issuer,auth_subject) VALUES ('a','test','a'),('b','test','b')",
+      "INSERT INTO households(id,name) VALUES ('home','Juntos')",
+      "INSERT INTO household_members(household_id,user_id,slot,color,display_name) VALUES ('home','a','blue','blue','Él'),('home','b','pink','pink','Ella')",
+      `INSERT INTO transactions(id,household_id,kind,scope,amount_cents,description,occurred_on,budget_month,category,owner_user_id,created_by,paid_by,settled_at,settled_by) VALUES
+        ('i','home','income','personal',800000,'Sueldo','2026-09-01','2026-09','Otros','a','a',NULL,NULL,NULL),
+        ('p','home','expense','personal',5000,'Café','2026-09-02','2026-09','Comida','b','b',NULL,NULL,NULL),
+        ('s','home','expense','shared',10001,'Súper','2026-09-03','2026-09','Hogar',NULL,'a','a','2026-09-03T00:00:00.000Z','a'),
+        ('q','home','expense','shared',3000,'Luz','2026-09-04','2026-09','Hogar',NULL,'b','b',NULL,NULL)`,
+    ], 'write');
+    const before = await totals();
+    assert.deepEqual(await migrate(old, migrations), ['006_loans.sql']);
+    assert.deepEqual(await totals(), before);
   } finally {
     old.close();
     rmSync(upgradeFolder, {recursive: true, force: true});

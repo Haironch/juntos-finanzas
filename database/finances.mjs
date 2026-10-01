@@ -68,6 +68,14 @@ function validTransaction(input, context) {
     if (!SLOTS.includes(input.owner)) throw new HttpError(400, 'owner debe ser blue o pink en un movimiento personal');
     ownerUserId = context.users[input.owner];
     if (!ownerUserId) throw new HttpError(409, 'Esa persona todavía no se ha unido al hogar');
+    // Préstamo: gasto personal que pagó la otra persona; queda pendiente hasta que se le devuelve.
+    if (input.kind === 'expense' && input.paidBy != null && input.paidBy !== input.owner) {
+      if (!SLOTS.includes(input.paidBy)) throw new HttpError(400, 'paidBy debe ser blue o pink');
+      paidByUserId = context.users[input.paidBy];
+      if (!paidByUserId) throw new HttpError(409, 'Esa persona todavía no se ha unido al hogar');
+      if (input.settled != null && typeof input.settled !== 'boolean') throw new HttpError(400, 'settled debe ser true o false');
+      settled = input.settled === true;
+    }
   } else {
     if (context.members < 2) throw new HttpError(409, 'Un gasto compartido requiere que tu pareja se una al hogar');
     // Por defecto pagó quien lo registra y queda pendiente de transferencia.
@@ -109,10 +117,13 @@ function toTransaction(row, context) {
     createdBy: context.slots[row.created_by],
     // Solo gastos compartidos: quién pagó y si la otra persona ya transfirió su mitad.
     paidBy: row.paid_by ? context.slots[row.paid_by] : null,
-    settled: row.scope === 'shared' ? row.settled_at !== null : null,
+    loan: row.scope === 'personal' && row.paid_by !== null,
+    settled: row.paid_by !== null ? row.settled_at !== null : null,
     settledAt: row.settled_at,
     settledBy: row.settled_by ? context.slots[row.settled_by] : null,
-    pendingCents: row.scope === 'shared' && row.settled_at === null ? shareOf(row.amount_cents, OTHER[context.slots[row.paid_by]]) : 0,
+    // Lo que la otra persona debe a quien pagó: su mitad en un compartido, todo en un préstamo.
+    pendingCents: row.paid_by === null || row.settled_at !== null ? 0
+      : row.scope === 'shared' ? shareOf(row.amount_cents, OTHER[context.slots[row.paid_by]]) : row.amount_cents,
     version: row.version,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -159,6 +170,11 @@ export async function updateTransaction(client, userId, id, body = {}) {
     const current = toTransaction(row, context);
     const merged = {...current, ...pick(body, ['kind', 'scope', 'amountCents', 'description', 'occurredOn', 'budgetMonth', 'category', 'owner', 'paidBy', 'settled'])};
     if (merged.scope === 'shared') merged.owner = null;
+    // Al cambiar entre compartido y personal sin indicar pagador, se empieza de cero: compartido lo paga quien edita, personal no es préstamo.
+    if (body.scope !== undefined && body.scope !== current.scope && body.paidBy === undefined) {
+      delete merged.paidBy;
+      delete merged.settled;
+    }
     // Si cambia la fecha sin indicar mes, se conserva el mes actual mientras siga siendo válido.
     if (body.occurredOn !== undefined && body.budgetMonth === undefined && typeof merged.occurredOn === 'string') {
       const own = merged.occurredOn.slice(0, 7);
@@ -200,7 +216,7 @@ export async function settleTransactions(client, userId, body = {}) {
     for (const item of items) {
       const row = await findTransaction(tx, context, item?.id);
       assertVersion(row, version(item.version), current => toTransaction(current, context));
-      if (row.scope !== 'shared') throw new HttpError(400, 'Solo un gasto compartido se puede saldar');
+      if (row.paid_by === null) throw new HttpError(400, 'Solo un gasto compartido o un préstamo se puede saldar');
       if (row.settled_at !== null) continue;
       await tx.execute({
         sql: `UPDATE transactions SET settled_at = ${NOW}, settled_by = ?, version = version + 1, updated_at = ${NOW}
@@ -212,11 +228,12 @@ export async function settleTransactions(client, userId, body = {}) {
   });
 }
 
-// Gastos compartidos pendientes de cualquier mes y cuánto se deben en neto.
+// Compartidos sin transferir y préstamos sin devolver, de cualquier mes, y cuánto se deben en neto.
+// Con dos miembros, quien debe siempre es la otra persona de quien pagó.
 async function pendingFor(executor, context) {
   const {rows} = await executor.execute({
     sql: `SELECT ${TRANSACTION_COLUMNS} FROM transactions
-          WHERE household_id = ? AND scope = 'shared' AND settled_at IS NULL ORDER BY occurred_on, created_at`,
+          WHERE household_id = ? AND paid_by IS NOT NULL AND settled_at IS NULL ORDER BY occurred_on, created_at`,
     args: [context.householdId],
   });
   const items = rows.map(row => toTransaction(row, context));

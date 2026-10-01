@@ -100,8 +100,8 @@ test('valida pagador, estado y qué se puede saldar', async () => {
   await couple('otro-azul', 'otro-rosa');
   assert.equal((await add('azul', expense({paidBy: 'green'}))).status, 400);
   assert.equal((await add('azul', expense({settled: 'si'}))).status, 400);
-  const personal = (await add('azul', expense({scope: 'personal', owner: 'blue', paidBy: 'pink', settled: true}))).body;
-  assert.deepEqual([personal.paidBy, personal.settled], [null, null]);
+  const personal = (await add('azul', expense({scope: 'personal', owner: 'blue', paidBy: 'blue', settled: true}))).body;
+  assert.deepEqual([personal.paidBy, personal.settled, personal.loan], [null, null, false]);
   assert.equal((await settle('azul', [personal])).status, 400);
   const mine = (await add('azul', expense())).body;
   assert.equal((await settle('otro-azul', [mine])).status, 404);
@@ -121,7 +121,7 @@ test('la base rechaza pagadores incoherentes aunque se escriba directo', async (
     args: [home.id, scope, scope === 'personal' ? home.user_id : null, home.user_id, paidBy, settledBy && '2026-09-01T00:00:00.000Z', settledBy],
   });
   await assert.rejects(insert('shared', null), /requiere quién pagó/);
-  await assert.rejects(insert('personal', home.user_id), /Solo un gasto compartido/);
+  await assert.rejects(insert('personal', home.user_id), /paga la otra persona/);
   await assert.rejects(insert('shared', stranger.user_id), /miembro del hogar/);
   await assert.rejects(insert('shared', home.user_id, stranger.user_id), /miembro del hogar/);
 });

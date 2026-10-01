@@ -83,6 +83,10 @@ Un gasto compartido guarda quién pagó (`paidBy`, por defecto quien lo registra
 
 `POST`/`PATCH /api/transactions` aceptan `paidBy` y `settled` en gastos compartidos; `settled: false` en un `PATCH` vuelve a dejarlo pendiente.
 
+### Préstamos
+
+Un préstamo es un gasto personal que pagó la otra persona: `scope: "personal"`, `owner` (de quién es el gasto) y `paidBy` distinto del dueño. Mientras no se devuelve (`settled: false`, por defecto) se descuenta a quien pagó y el dueño le debe el monto completo (`pendingCents`). Al marcarlo como devuelto pasa al saldo del dueño. Aparece en `pending` junto a los compartidos y se compensa en el neto; se salda con el mismo `POST /api/pending/settle`. `loan: true` lo identifica. Con `paidBy` igual al dueño (o sin `paidBy`) es un gasto personal normal; los ingresos nunca son préstamos.
+
 Ediciones simultáneas: toda edición o borrado exige la `version` que se leyó. Si la pareja cambió el dato antes, la API responde 409 con `current` (el dato vigente) para mostrarlo y decidir, en lugar de sobrescribirlo. Movimientos de otro hogar responden 404.
 
 ## Interfaz

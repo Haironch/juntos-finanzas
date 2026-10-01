@@ -188,7 +188,9 @@ const toLocalTransaction = t => ({
   category: t.category,
   // En un gasto compartido, person es quién pagó.
   person: PERSON[t.scope === 'personal' ? t.owner : t.paidBy],
-  ...(t.scope === 'shared' && {settled: t.settled, pendingCents: t.pendingCents}),
+  // payer: quién pagó en un compartido o en un préstamo (en el préstamo, la otra persona).
+  ...(t.paidBy && {payer: PERSON[t.paidBy], settled: t.settled, pendingCents: t.pendingCents}),
+  ...(t.loan && {loan: true}),
   version: t.version,
 });
 
@@ -218,7 +220,9 @@ export function saveTransaction(t, existing) {
     occurredOn: t.date,
     budgetMonth: t.month || t.date.slice(0, 7),
     category: t.kind === 'income' ? existing?.category || 'Otros' : t.category,
-    ...(t.scope === 'personal' && {owner: SLOT[t.person]}),
+    // En un personal, paidBy igual al dueño significa que no es préstamo.
+    ...(t.scope === 'personal' && {owner: SLOT[t.person], paidBy: SLOT[t.loan ? (t.person === 'him' ? 'her' : 'him') : t.person]}),
+    ...(t.loan && {settled: t.settled === true}),
     ...(t.scope === 'shared' && {paidBy: SLOT[t.person], settled: t.settled === true}),
   };
   if (!existing) return request('POST', '/api/transactions', body);

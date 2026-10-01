@@ -42,6 +42,7 @@ Se expone opcionalmente la consulta de solo lectura WebMCP `read_month_summary` 
 - Cambios de la pareja sin recargar: mientras la app está a la vista consulta `GET /api/sync` cada 8 segundos (y al volver a abrirla); si la huella del hogar cambió, recarga el mes y avisa lo que registró la otra persona.
 - Gestos (`public/native.js`): deslizar hacia abajo para actualizar (solo en la app instalada), deslizar una hoja hacia abajo para cerrarla y botón flotante + para registrar un gasto.
 - Sesiones de 60 días que se renuevan con el uso.
+- Al registrar algo nuevo (o saldar un pendiente) suena un "cha-ching" de monedas si entra dinero o un tono grave si sale, y aparece el monto animado (`public/effects.js`, sonidos sintetizados con Web Audio, sin archivos). Los saldos cuentan hasta su nuevo valor y el movimiento nuevo se ilumina. Los sonidos se apagan en Nuestro espacio > Apariencia y respetan el modo silencio.
 - Modo oscuro: por defecto sigue al teléfono; en Nuestro espacio > Apariencia se elige Automático, Claro u Oscuro (se guarda en cada dispositivo). Un script en el `<head>` aplica el tema antes de dibujar. Los colores de cada persona tienen paleta clara y oscura en `public/cloud.js`.
 
 ## Publicar en Vercel

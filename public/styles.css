@@ -263,3 +263,25 @@ button,a,label,input,select{touch-action:manipulation}
   :root[data-theme=dark] dialog{box-shadow:0 -10px 40px #0008}
 }
 @media(display-mode:standalone){:root[data-theme=dark]{background:#0e171d}}
+/* Animación al registrar dinero */
+.money-burst{position:fixed;left:50%;top:42%;z-index:40;pointer-events:none;transform:translate(-50%,-50%)}
+.burst-amount{display:block;font-family:Manrope,sans-serif;font-size:clamp(34px,9vw,52px);font-weight:800;letter-spacing:-1.5px;white-space:nowrap;padding:10px 22px;border-radius:20px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.money-burst.income .burst-amount{color:#2f7a5b;background:#e9f7efe6;box-shadow:0 12px 40px #2f7a5b33;animation:burst-up 1.5s cubic-bezier(.2,.9,.3,1) forwards}
+.money-burst.expense .burst-amount{color:#b0505f;background:#fbecefe6;box-shadow:0 12px 40px #b0505f2e;animation:burst-down 1.4s cubic-bezier(.3,.7,.4,1) forwards}
+.money-burst i{position:absolute;left:50%;top:50%;font-style:normal;font-size:26px;opacity:0;animation:burst-particle 1.1s cubic-bezier(.15,.8,.35,1) var(--delay) forwards}
+.money-burst.expense i{font-size:22px;animation-duration:1.2s}
+@keyframes burst-up{0%{opacity:0;transform:scale(.4) translateY(20px)}18%{opacity:1;transform:scale(1.12) translateY(0)}30%{transform:scale(1)}72%{opacity:1;transform:translateY(-14px)}100%{opacity:0;transform:translateY(-70px) scale(.92)}}
+@keyframes burst-down{0%{opacity:0;transform:scale(.5) translateY(-20px)}18%{opacity:1;transform:scale(1.08)}30%{transform:scale(1)}70%{opacity:1;transform:translateY(10px)}100%{opacity:0;transform:translateY(70px) scale(.94)}}
+@keyframes burst-particle{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}15%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y))) rotate(var(--r)) scale(1)}}
+:root[data-theme=dark] .money-burst.income .burst-amount{color:#8fd1af;background:#16291fe6;box-shadow:0 12px 40px #0008}
+:root[data-theme=dark] .money-burst.expense .burst-amount{color:#f3a3b0;background:#2c1a1fe6;box-shadow:0 12px 40px #0008}
+/* Salto de la tarjeta cuyo saldo cambió y brillo del movimiento nuevo */
+.bump{animation:card-bump .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes card-bump{0%{transform:scale(1)}35%{transform:scale(1.025)}100%{transform:scale(1)}}
+tr.flash td,tr.flash{animation:row-flash 2.2s ease-out}
+@keyframes row-flash{0%,25%{background:#fff3c4}100%{background:transparent}}
+:root[data-theme=dark] tr.flash td,:root[data-theme=dark] tr.flash{animation-name:row-flash-dark}
+@keyframes row-flash-dark{0%,25%{background:#3a3218}100%{background:transparent}}
+.sound-toggle{margin:14px 0 0}
+@media(prefers-reduced-motion:reduce){.money-burst .burst-amount{animation-duration:1.2s!important;animation-name:burst-fade!important}.bump,tr.flash,tr.flash td{animation:none}}
+@keyframes burst-fade{0%,100%{opacity:0}15%,70%{opacity:1}}

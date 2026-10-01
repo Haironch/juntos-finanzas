@@ -1,5 +1,6 @@
 // Versión compartida: sesión con Google, hogar y datos en la API.
 // Si el servidor no tiene inicio de sesión configurado (/api/me responde 503), la app sigue en modo local.
+import {bindSoundToggle} from './effects.js';
 import {bindThemeChoice} from './native.js';
 
 const $ = s => document.querySelector(s);
@@ -296,6 +297,7 @@ export function openSettings(onChange) {
     <section class="settings-section">
       <h3>Apariencia</h3>
       <div class="theme-choice" data-theme-choice></div>
+      <label class="settle-check sound-toggle"><input type="checkbox" data-sound-toggle><span>Sonidos al registrar<small>Monedas al ingresar dinero y un tono más grave al gastar. Respeta el modo silencio del teléfono.</small></span></label>
     </section>
     <section class="settings-section">
       <p class="modal-intro">Conectado como <b>${esc(me.email)}</b>. Moneda: quetzales (GTQ). Cada mes tiene ingresos, gastos y meta independientes.</p>
@@ -304,6 +306,7 @@ export function openSettings(onChange) {
   dialog.querySelector('[data-close]').onclick = () => dialog.close();
   $('#sign-out').onclick = signOut;
   bindThemeChoice(dialog.querySelector('[data-theme-choice]'));
+  bindSoundToggle(dialog.querySelector('[data-sound-toggle]'));
   $('#profile-form').onsubmit = async event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));

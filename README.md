@@ -42,6 +42,7 @@ Se expone opcionalmente la consulta de solo lectura WebMCP `read_month_summary` 
 - Cambios de la pareja sin recargar: mientras la app está a la vista consulta `GET /api/sync` cada 8 segundos (y al volver a abrirla); si la huella del hogar cambió, recarga el mes y avisa lo que registró la otra persona.
 - Gestos (`public/native.js`): deslizar hacia abajo para actualizar (solo en la app instalada), deslizar una hoja hacia abajo para cerrarla y botón flotante + para registrar un gasto.
 - Sesiones de 60 días que se renuevan con el uso.
+- Modo oscuro: por defecto sigue al teléfono; en Nuestro espacio > Apariencia se elige Automático, Claro u Oscuro (se guarda en cada dispositivo). Un script en el `<head>` aplica el tema antes de dibujar. Los colores de cada persona tienen paleta clara y oscura en `public/cloud.js`.
 
 ## Publicar en Vercel
 

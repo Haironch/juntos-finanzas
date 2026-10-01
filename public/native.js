@@ -83,3 +83,47 @@ export function swipeToClose() {
     }, 200);
   });
 }
+
+// Tema claro u oscuro. "auto" sigue al teléfono; la elección se guarda solo en este dispositivo.
+// El <head> de index.html aplica el tema antes de dibujar para evitar un destello blanco.
+const THEME_KEY = 'juntos-theme';
+const THEMES = {auto: 'Automático', light: 'Claro', dark: 'Oscuro'};
+const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+
+export function themePreference() {
+  try {
+    return localStorage.getItem(THEME_KEY) || 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+export function applyTheme() {
+  const preference = themePreference();
+  const dark = preference === 'dark' || (preference === 'auto' && darkQuery.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', dark ? '#131e25' : '#ffffff');
+  dispatchEvent(new Event('themechange'));
+}
+
+darkQuery.addEventListener('change', () => {
+  if (themePreference() === 'auto') applyTheme();
+});
+
+function setThemePreference(value) {
+  try {
+    if (value === 'auto') localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, value);
+  } catch {
+    // Sin almacenamiento disponible el tema dura hasta cerrar la app.
+  }
+  applyTheme();
+}
+
+// Selector Automático / Claro / Oscuro dentro de los ajustes.
+export function bindThemeChoice(container) {
+  const current = themePreference();
+  container.innerHTML = Object.entries(THEMES).map(([value, label]) =>
+    `<label><input type="radio" name="theme" value="${value}" ${value === current ? 'checked' : ''}><span>${label}</span></label>`).join('');
+  container.onchange = event => setThemePreference(event.target.value);
+}

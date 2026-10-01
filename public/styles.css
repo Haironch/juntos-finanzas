@@ -147,6 +147,8 @@ button,a,label,input,select{touch-action:manipulation}
   .fab{display:flex;position:fixed;right:18px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:6;width:56px;height:56px;border-radius:50%;align-items:center;justify-content:center;background:#2f5d4c;color:#fff;font-size:30px;font-weight:300;line-height:1;box-shadow:0 8px 24px #1f3d3240,0 2px 6px #1f3d3230}
   .fab:active{transform:scale(.92)}
   .toast{bottom:calc(146px + env(safe-area-inset-bottom))}
+  /* Espacio para que lo último de la página quede por encima del botón + */
+  .content{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
 }
 /* Deslizar hacia abajo para actualizar (app instalada) */
 .ptr{position:fixed;top:-44px;left:50%;z-index:30;width:40px;height:40px;margin-top:env(safe-area-inset-top);border-radius:50%;background:#fff;box-shadow:0 4px 14px #16352f2e;display:flex;align-items:center;justify-content:center;color:#5c9078;font-size:18px;font-weight:700;opacity:0;transform:translate(-50%,0);pointer-events:none}
@@ -156,3 +158,108 @@ button,a,label,input,select{touch-action:manipulation}
 @keyframes ptr-spin{to{transform:rotate(360deg)}}
 /* En la app instalada no hay barra del navegador: el fondo del rebote combina con la app */
 @media(display-mode:standalone){html{background:#f7f9fb}}
+/* Selector de apariencia (Automático / Claro / Oscuro) */
+.theme-choice{display:flex;background:#f1f4f3;border-radius:10px;padding:3px;gap:3px}
+.theme-choice label{flex:1;position:relative}
+.theme-choice input{position:absolute;opacity:0;pointer-events:none}
+.theme-choice span{display:block;text-align:center;padding:9px 6px;border-radius:8px;font-size:13px;color:#6f8079;cursor:pointer}
+.theme-choice input:checked+span{background:#fff;color:#2f5d4c;font-weight:600;box-shadow:0 1px 4px #19302b1f}
+.theme-choice input:focus-visible+span{outline:2px solid #5893e3}
+
+/* ===== Modo oscuro ===== */
+:root[data-theme=dark]{color-scheme:dark;color:#e3ebef;background:#0e171d;--muted:#8a9aa3;--line:#24343e;--ring-track:#22323b;
+  --p1-ink:#8db8f2;--p1-strong:#a7c8f5;--p1-muted:#7f97b3;--p1-mark:#6fa3ea;--p1-soft:#1d3048;--p1-bg1:#182a3d;--p1-bg2:#15222f;--p1-line:#253a52;
+  --p2-ink:#eba4c0;--p2-strong:#f2b6cd;--p2-muted:#b08b9c;--p2-mark:#e48fb1;--p2-soft:#3a2230;--p2-bg1:#2f1f29;--p2-bg2:#241b22;--p2-line:#4a2d3c}
+:root[data-theme=dark] body{background:#0e171d}
+/* Superficies */
+:root[data-theme=dark] .sidebar,:root[data-theme=dark] header,:root[data-theme=dark] .saving-card,:root[data-theme=dark] .spending-card,:root[data-theme=dark] .transactions,:root[data-theme=dark] .detail-panel,:root[data-theme=dark] dialog,:root[data-theme=dark] .gate-card{background:#152129;color:#e3ebef}
+:root[data-theme=dark] dialog{border-color:#24343e;box-shadow:0 20px 80px #0009}
+:root[data-theme=dark] dialog::backdrop{background:#02080cb8}
+:root[data-theme=dark] .gate{background:linear-gradient(140deg,#0f1c26,#0e171d 45%,#1c1520)}
+:root[data-theme=dark] .gate-card{border-color:#24343e;box-shadow:0 20px 80px #0008}
+:root[data-theme=dark] .gate-card>p:not(.eyebrow):not(.form-error){color:#a3b2ba}
+/* Textos principales */
+:root[data-theme=dark] h1,:root[data-theme=dark] h2,:root[data-theme=dark] h3,:root[data-theme=dark] .workspace,:root[data-theme=dark] .breadcrumb b,:root[data-theme=dark] .movement-name strong,:root[data-theme=dark] .category-title b,:root[data-theme=dark] .amount-cell,:root[data-theme=dark] .month-control input,:root[data-theme=dark] .search input,:root[data-theme=dark] .saving-copy h2,:root[data-theme=dark] .pending-list strong,:root[data-theme=dark] .settle-check{color:#e3ebef}
+:root[data-theme=dark] .balance-card h2,:root[data-theme=dark] .person-card h2{color:inherit}
+:root[data-theme=dark] .person-card h2{color:var(--strong)}
+:root[data-theme=dark] .brand{color:#e3ebef}
+:root[data-theme=dark] .page-heading p:not(.eyebrow),:root[data-theme=dark] .modal-intro,:root[data-theme=dark] .detail-panel p,:root[data-theme=dark] .empty p,:root[data-theme=dark] .category-empty{color:#a3b2ba}
+:root[data-theme=dark] .eyebrow{color:#86a99a}
+:root[data-theme=dark] .detail-panel strong,:root[data-theme=dark] .saving-ring span{color:#8fd1af}
+:root[data-theme=dark] .negative{color:#f08a9c!important}
+/* Navegación y cabecera */
+:root[data-theme=dark] .nav-item{color:#93a3ab}
+:root[data-theme=dark] .nav-item.active{background:#1c3329;color:#8fd1af}
+:root[data-theme=dark] .nav-item:hover{background:#1b2a33}
+:root[data-theme=dark] .local-pill{background:#1c3329;color:#8fd1af}
+:root[data-theme=dark] .offline .local-pill{background:#3a1f24;color:#f0a0aa}
+:root[data-theme=dark] .breadcrumb span{color:#4a5c66}
+:root[data-theme=dark] .couple span,:root[data-theme=dark] .avatar-button span{border-color:#152129}
+:root[data-theme=dark] .brand-icon{background:#0e171d;box-shadow:inset 0 0 0 1px #2a3d48}
+/* Controles */
+:root[data-theme=dark] .month-control,:root[data-theme=dark] .secondary,:root[data-theme=dark] .field input,:root[data-theme=dark] .field select{background:#1b2a33;border-color:#2b3d47;color:#e3ebef}
+:root[data-theme=dark] .secondary{color:#e3ebef}
+:root[data-theme=dark] .secondary:hover{background:#22333d}
+:root[data-theme=dark] .field input::placeholder,:root[data-theme=dark] .search input::placeholder{color:#6d7f88}
+:root[data-theme=dark] .primary{background:#3a8a6b;box-shadow:none}
+:root[data-theme=dark] .primary:hover{background:#43997a}
+:root[data-theme=dark] .text-button{color:#8fc7ad}
+:root[data-theme=dark] .close{color:#9fb0b8}
+:root[data-theme=dark] dialog .close:active{background:#22333d}
+:root[data-theme=dark] .filter-tabs,:root[data-theme=dark] .theme-choice{background:#1b2a33}
+:root[data-theme=dark] .filter-tabs button,:root[data-theme=dark] .theme-choice span{color:#93a3ab}
+:root[data-theme=dark] .filter-tabs .selected,:root[data-theme=dark] .theme-choice input:checked+span{background:#2a3c46;color:#e3ebef;box-shadow:none}
+:root[data-theme=dark] .choice>span,:root[data-theme=dark] .settle-check{border-color:#2b3d47}
+:root[data-theme=dark] .choice input:checked+span,:root[data-theme=dark] .settle-check:has(input:checked){background:#1c3329;border-color:#4f9a7a}
+:root[data-theme=dark] .blue-choice input:checked+span{background:var(--p1-soft);border-color:var(--p1-mark);color:var(--p1-ink)}
+:root[data-theme=dark] .pink-choice input:checked+span{background:var(--p2-soft);border-color:var(--p2-mark);color:var(--p2-ink)}
+:root[data-theme=dark] .choice small,:root[data-theme=dark] .settle-check small,:root[data-theme=dark] .field-hint{color:#8a9aa3}
+/* Tarjetas del resumen */
+:root[data-theme=dark] .balance-card{background:#1a3340;box-shadow:0 0 0 1px #264654}
+:root[data-theme=dark] .saving-ring>div{background:#152129}
+:root[data-theme=dark] .saving-footer{border-color:#24343e}
+:root[data-theme=dark] .category-track{background:#22323b}
+/* Tabla de movimientos */
+:root[data-theme=dark] th{background:#18252d;border-color:#24343e;color:#7e8f98}
+:root[data-theme=dark] td{border-color:#1f2e37}
+:root[data-theme=dark] tbody tr{border-color:#1f2e37}
+:root[data-theme=dark] .movement-icon{background:#1f2e37;color:#a3b2ba}
+:root[data-theme=dark] .movement-icon.income{background:#1c3329;color:#8fd1af}
+:root[data-theme=dark] .amount-cell.income{color:#8fd1af}
+:root[data-theme=dark] .owner{background:#1f2e37;color:#a3b2ba}
+:root[data-theme=dark] .row-actions button:hover{background:#1f2e37;color:#8fd1af}
+:root[data-theme=dark] .empty>span{background:#1c3329;color:#8fd1af}
+/* Avisos y vistas previas */
+:root[data-theme=dark] .demo-banner{background:#16291f;border-color:#244534;color:#9fd2b5}
+:root[data-theme=dark] .invite-banner{background:#211d33;border-color:#342d50;color:#c3b6ee}
+:root[data-theme=dark] .expense-preview{background:#18282a;color:#9fbfae}
+:root[data-theme=dark] .expense-preview strong{color:#c6e6d4}
+:root[data-theme=dark] .expense-preview.warning{background:#2d2018;color:#e3b591}
+:root[data-theme=dark] .expense-preview.warning strong{color:#f3c9a6}
+:root[data-theme=dark] .preview-split span:first-child{color:var(--p1-ink)}
+:root[data-theme=dark] .preview-split span:last-child{color:var(--p2-ink)}
+:root[data-theme=dark] .form-error{color:#f08a9c}
+:root[data-theme=dark] .toast{background:#2f6f58;box-shadow:0 10px 25px #0007}
+/* Pendientes y préstamos */
+:root[data-theme=dark] .pending-card{background:#221c12;border-color:#3d3220}
+:root[data-theme=dark] .pending-total{color:#d8b77d}
+:root[data-theme=dark] .pending-total b,:root[data-theme=dark] .pending-amount{color:#ecc98a}
+:root[data-theme=dark] .pending-list li{background:#18140d;border-color:#3d3220}
+:root[data-theme=dark] .owner.pending,:root[data-theme=dark] .owner.shared.pending{background:#33281a;color:#ecc98a}
+:root[data-theme=dark] .for-month{color:#d8b77d}
+/* Ajustes */
+:root[data-theme=dark] .settings-section,:root[data-theme=dark] .settings-tools{border-color:#24343e}
+:root[data-theme=dark] .invite-code{background:#1b2a33;border-color:#36505c;color:#e3ebef}
+:root[data-theme=dark] .swatch span{border-color:#152129;box-shadow:0 0 0 1px #2b3d47}
+:root[data-theme=dark] .swatch input:checked+span{box-shadow:0 0 0 2px #e3ebef}
+:root[data-theme=dark] .gate-option{border-color:#24343e}
+/* Hojas inferiores, botón flotante e indicador de actualizar */
+:root[data-theme=dark] .ptr{background:#1b2a33;color:#8fd1af;box-shadow:0 4px 14px #0008}
+:root[data-theme=dark] .fab{background:#3a8a6b;box-shadow:0 8px 24px #0009}
+@media(max-width:720px){
+  :root[data-theme=dark] .sidebar{background:#131e25f2;border-color:#24343e}
+  :root[data-theme=dark] dialog .modal-heading,:root[data-theme=dark] .modal-actions{background:#152129;border-color:#24343e}
+  :root[data-theme=dark] dialog .modal-heading::before{background:#3a4c56}
+  :root[data-theme=dark] dialog{box-shadow:0 -10px 40px #0008}
+}
+@media(display-mode:standalone){:root[data-theme=dark]{background:#0e171d}}

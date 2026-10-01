@@ -1,5 +1,7 @@
 // Versión compartida: sesión con Google, hogar y datos en la API.
 // Si el servidor no tiene inicio de sesión configurado (/api/me responde 503), la app sigue en modo local.
+import {bindThemeChoice} from './native.js';
+
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 
@@ -13,6 +15,15 @@ const PALETTE = {
   purple: ['#7156a8', '#654b9c', '#9d92b5', '#aa92e0', '#eee8fa', '#f4f0fd', '#faf8ff', '#e4dcf4'],
   orange: ['#b06a2c', '#a55f22', '#b89a80', '#f0a868', '#fbeee1', '#fdf4ea', '#fffaf5', '#f3e3d2'],
   teal: ['#2f7f86', '#26727a', '#84a6a9', '#6cc3c9', '#e0f3f4', '#ecf8f9', '#f6fcfc', '#d3ecee'],
+};
+// Mismos tonos para el modo oscuro: textos claros y fondos tenues sobre superficies oscuras.
+const DARK_PALETTE = {
+  blue: ['#8db8f2', '#a7c8f5', '#7f97b3', '#6fa3ea', '#1d3048', '#182a3d', '#15222f', '#253a52'],
+  pink: ['#eba4c0', '#f2b6cd', '#b08b9c', '#e48fb1', '#3a2230', '#2f1f29', '#241b22', '#4a2d3c'],
+  green: ['#8fd1af', '#a5dcbf', '#86a596', '#6fbf96', '#1c3429', '#193026', '#15231d', '#27463a'],
+  purple: ['#bba6ee', '#cbbaf3', '#9b91b3', '#a68ae6', '#2a2342', '#251f3a', '#1d1a2c', '#3a3158'],
+  orange: ['#f2b880', '#f6c799', '#b39b84', '#eea35f', '#3a2a1b', '#33251a', '#261d16', '#4d3824'],
+  teal: ['#86d3d8', '#9fdde1', '#82a7aa', '#5fc2c9', '#183538', '#173033', '#142427', '#244a4e'],
 };
 // La app local llama him/her a las posiciones blue/pink del hogar.
 const PERSON = {blue: 'him', pink: 'her'};
@@ -170,11 +181,16 @@ async function signOut() {
 // Colores de cada persona como variables CSS (p1 = posición blue, p2 = posición pink).
 function applyColors() {
   const root = document.documentElement.style;
+  const palette = document.documentElement.dataset.theme === 'dark' ? DARK_PALETTE : PALETTE;
   for (const [slot, prefix, fallback] of [['blue', 'p1', 'blue'], ['pink', 'p2', 'pink']]) {
-    const tones = PALETTE[member(slot)?.color || fallback];
+    const tones = palette[member(slot)?.color || fallback];
     TONES.forEach((tone, i) => root.setProperty(`--${prefix}-${tone}`, tones[i]));
   }
 }
+
+addEventListener('themechange', () => {
+  if (household) applyColors();
+});
 
 // Textos, iniciales y avisos que dependen del hogar.
 function refreshChrome() {
@@ -278,11 +294,16 @@ export function openSettings(onChange) {
       ${partner ? '' : `<div id="invite-box"><p class="modal-intro">Tu pareja todavía no se une. Genera un código y compártelo; sirve una sola vez durante 7 días.</p><button class="button secondary full" id="create-invite">Generar código para mi pareja</button></div>`}
     </section>
     <section class="settings-section">
+      <h3>Apariencia</h3>
+      <div class="theme-choice" data-theme-choice></div>
+    </section>
+    <section class="settings-section">
       <p class="modal-intro">Conectado como <b>${esc(me.email)}</b>. Moneda: quetzales (GTQ). Cada mes tiene ingresos, gastos y meta independientes.</p>
       <button class="button secondary full" id="sign-out">Cerrar sesión</button>
     </section>`;
   dialog.querySelector('[data-close]').onclick = () => dialog.close();
   $('#sign-out').onclick = signOut;
+  bindThemeChoice(dialog.querySelector('[data-theme-choice]'));
   $('#profile-form').onsubmit = async event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));

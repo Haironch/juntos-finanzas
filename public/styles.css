@@ -87,3 +87,50 @@ body.gated{overflow:hidden}
 /* Préstamos */
 .owner.pending{background:#fff6e6;color:#a4742a}
 @media(max-width:720px){#scope-field .choice-row{flex-direction:column}}
+/* Modales en iPhone y teléfonos: hoja que sube desde abajo, con título y botón principal siempre visibles. */
+dialog{overflow-y:auto;overscroll-behavior:contain}
+#scope-field .choice>span{padding:12px 8px 12px 28px;font-size:13.5px}
+#scope-field .choice input{left:9px}
+html:has(dialog[open]){overflow:hidden}
+button,label,input,select{-webkit-tap-highlight-color:transparent}
+@media(max-width:720px){
+  dialog{width:100%;max-width:100%;margin:auto 0 0;border:0;border-radius:22px 22px 0 0;padding:0 18px;max-height:calc(100dvh - max(24px,env(safe-area-inset-top)));box-shadow:0 -10px 40px #16352f26;animation:sheet-up .24s cubic-bezier(.2,.8,.3,1)}
+  dialog>:last-child{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+  dialog>form:has(>.modal-actions){padding-bottom:0}
+  /* Encabezado fijo con la barrita de arrastre de iOS */
+  dialog .modal-heading{position:sticky;top:0;z-index:2;background:#fff;margin:0 -18px 16px;padding:22px 18px 12px;border-bottom:1px solid #eef2f0;align-items:center}
+  dialog .modal-heading::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:#d9e1dd}
+  dialog .modal-heading .eyebrow{margin-bottom:4px;font-size:9px}
+  dialog .modal-heading h2{font-size:20px;letter-spacing:-.5px}
+  dialog .close{width:44px;height:44px;margin:-8px -10px -8px 8px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
+  dialog .close:active{background:#f0f4f2}
+  /* Botón principal fijo abajo, por encima de la barra de inicio */
+  .modal-actions{position:sticky;bottom:0;z-index:2;background:#fff;margin:4px -18px 0;padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #eef2f0}
+  .modal-actions .button{min-height:50px;font-size:16px}
+  dialog .modal-intro{margin:8px 0 16px;line-height:1.6}
+  dialog .field{margin-bottom:16px}
+  dialog .field input,dialog .field select{min-height:48px}
+  /* Fecha en iOS: misma altura y alineación que el resto */
+  dialog .field input[type=date]{-webkit-appearance:none;appearance:none;display:block;text-align:left}
+  dialog .field input[type=date]::-webkit-date-and-time-value{text-align:left}
+  /* Opciones de reparto: una fila compacta de tres */
+  #scope-field .choice-row{flex-direction:row;gap:8px}
+  #scope-field .choice input{position:absolute;opacity:0;pointer-events:none}
+  #scope-field .choice>span{height:100%;padding:11px 6px;text-align:center;font-size:13px;line-height:1.3;font-weight:600}
+  #scope-field .choice small{font-size:10.5px;margin-top:4px;line-height:1.3;font-weight:400}
+  dialog .choice>span{min-height:48px;display:flex;flex-direction:column;justify-content:center}
+  dialog fieldset legend{font-size:14px;margin-bottom:8px}
+  .settle-check{padding:12px;margin-top:-2px}
+  .expense-preview{font-size:13px}
+  /* Confirmación: dos botones del mismo ancho */
+  dialog .button{min-height:48px}
+  .swatches{justify-content:space-between;gap:4px}
+  #confirm-dialog .actions{display:flex;gap:10px;padding-top:4px}
+  #confirm-dialog .actions .button{flex:1;min-height:50px}
+  /* Barra inferior y avisos respetan la barra de inicio */
+  .sidebar{height:calc(65px + env(safe-area-inset-bottom));padding-bottom:calc(5px + env(safe-area-inset-bottom))}
+  .content{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(82px + env(safe-area-inset-bottom))}
+}
+@keyframes sheet-up{from{transform:translateY(100%)}to{transform:none}}
+@media(prefers-reduced-motion:reduce){dialog{animation:none}}

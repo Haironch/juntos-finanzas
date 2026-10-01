@@ -15,7 +15,8 @@ export const allowedEmails = (env = process.env) =>
 // Tablas propias de Better Auth con prefijo auth_ para no confundirlas con las de Juntos.
 export const authModels = {
   user: {modelName: 'auth_users'},
-  session: {modelName: 'auth_sessions'},
+  // Sesiones largas: en la app instalada en el teléfono no conviene pedir Google seguido. Se renuevan con el uso.
+  session: {modelName: 'auth_sessions', expiresIn: 60 * 60 * 24 * 60, updateAge: 60 * 60 * 24},
   account: {modelName: 'auth_accounts', encryptOAuthTokens: true},
   verification: {modelName: 'auth_verifications'},
 };

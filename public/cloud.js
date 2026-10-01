@@ -31,11 +31,22 @@ async function request(method, path, body) {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
+    setOffline(true);
     throw Object.assign(new Error('Sin conexión. Revisa tu internet e inténtalo de nuevo.'), {status: 0});
   }
+  // El service worker marca las respuestas guardadas que entrega sin conexión.
+  setOffline(response.headers.has('x-juntos-offline'));
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw Object.assign(new Error(data.error || 'No se pudo completar la operación.'), {status: response.status, data});
   return data;
+}
+
+let offline = false;
+function setOffline(value) {
+  if (value === offline || !household) return;
+  offline = value;
+  document.body.classList.toggle('offline', offline);
+  $('.local-pill').textContent = offline ? 'Sin conexión' : 'En la nube';
 }
 
 const member = slot => household?.members.find(m => m.slot === slot);
@@ -149,6 +160,8 @@ function onboarding() {
 async function signOut() {
   try {
     await request('POST', '/api/auth/sign-out', {});
+    // Los datos del hogar guardados para usar sin conexión no deben quedar en el teléfono.
+    await globalThis.caches?.delete('juntos-data');
   } finally {
     location.href = '/';
   }
@@ -191,6 +204,7 @@ const toLocalTransaction = t => ({
   // payer: quién pagó en un compartido o en un préstamo (en el préstamo, la otra persona).
   ...(t.paidBy && {payer: PERSON[t.paidBy], settled: t.settled, pendingCents: t.pendingCents}),
   ...(t.loan && {loan: true}),
+  createdBy: PERSON[t.createdBy],
   version: t.version,
 });
 
@@ -205,8 +219,12 @@ export async function loadMonth(month) {
     transactions: data.transactions.map(toLocalTransaction),
     goal: data.goal && {name: data.goal.name, amount: data.goal.amountCents, version: data.goal.version},
     pending: toLocalPending(data.pending),
+    revision: data.revision,
   };
 }
+
+// Huella del hogar para saber, sin descargar todo, si la pareja cambió algo.
+export const revision = () => request('GET', '/api/sync').then(data => data.revision);
 
 // Marca como transferidos los gastos indicados (con la versión que se vio en pantalla).
 export const settle = items => request('POST', '/api/pending/settle', {items: items.map(({id, version}) => ({id, version}))});

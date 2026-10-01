@@ -35,6 +35,14 @@ Seis pruebas de dinero, reparto, fechas, aislamiento mensual y saldos negativos.
 
 Se expone opcionalmente la consulta de solo lectura WebMCP `read_month_summary` si el navegador la admite; usa los mismos cálculos que la interfaz.
 
+## En el teléfono
+
+- Instalable desde Safari con "Agregar a pantalla de inicio" (`manifest.webmanifest`, íconos en `public/icons/`). Se abre como app, sin barra del navegador.
+- `public/sw.js` guarda la app y los últimos datos del hogar: abre al instante y, sin conexión, muestra lo último cargado con el aviso "Sin conexión". Siempre intenta la red primero. Al cerrar sesión se borran los datos guardados.
+- Cambios de la pareja sin recargar: mientras la app está a la vista consulta `GET /api/sync` cada 8 segundos (y al volver a abrirla); si la huella del hogar cambió, recarga el mes y avisa lo que registró la otra persona.
+- Gestos (`public/native.js`): deslizar hacia abajo para actualizar (solo en la app instalada), deslizar una hoja hacia abajo para cerrarla y botón flotante + para registrar un gasto.
+- Sesiones de 60 días que se renuevan con el uso.
+
 ## Publicar en Vercel
 
 Vercel detecta `server.mjs` y lo convierte en una función; los archivos de `public/` se sirven desde su CDN. Node 22 (`engines` en `package.json`).

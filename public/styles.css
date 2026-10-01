@@ -134,3 +134,25 @@ button,label,input,select{-webkit-tap-highlight-color:transparent}
 }
 @keyframes sheet-up{from{transform:translateY(100%)}to{transform:none}}
 @media(prefers-reduced-motion:reduce){dialog{animation:none}}
+/* Sensación de app: respuesta al tocar, sin retraso de doble toque ni selección accidental */
+button,a,label,input,select{touch-action:manipulation}
+.sidebar,header,.button,.nav-item,.filter-tabs,.choice,.fab,.text-button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.button,.nav-item,.fab,.row-actions button,.filter-tabs button{transition:transform .12s ease,background .2s}
+.button:active,.nav-item:active,.row-actions button:active,.filter-tabs button:active{transform:scale(.96)}
+.choice:active>span{transform:scale(.98)}
+.offline .local-pill{background:#fdecec;color:#a5484f}
+/* Botón flotante para registrar un gasto (solo teléfono) */
+.fab{display:none}
+@media(max-width:720px){
+  .fab{display:flex;position:fixed;right:18px;bottom:calc(80px + env(safe-area-inset-bottom));z-index:6;width:56px;height:56px;border-radius:50%;align-items:center;justify-content:center;background:#2f5d4c;color:#fff;font-size:30px;font-weight:300;line-height:1;box-shadow:0 8px 24px #1f3d3240,0 2px 6px #1f3d3230}
+  .fab:active{transform:scale(.92)}
+  .toast{bottom:calc(146px + env(safe-area-inset-bottom))}
+}
+/* Deslizar hacia abajo para actualizar (app instalada) */
+.ptr{position:fixed;top:-44px;left:50%;z-index:30;width:40px;height:40px;margin-top:env(safe-area-inset-top);border-radius:50%;background:#fff;box-shadow:0 4px 14px #16352f2e;display:flex;align-items:center;justify-content:center;color:#5c9078;font-size:18px;font-weight:700;opacity:0;transform:translate(-50%,0);pointer-events:none}
+.ptr.ready span{color:#2f5d4c}
+.ptr.loading{transition:transform .2s}
+.ptr.loading span{animation:ptr-spin .8s linear infinite;display:inline-block}
+@keyframes ptr-spin{to{transform:rotate(360deg)}}
+/* En la app instalada no hay barra del navegador: el fondo del rebote combina con la app */
+@media(display-mode:standalone){html{background:#f7f9fb}}

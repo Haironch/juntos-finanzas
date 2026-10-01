@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check public/app.js && node --check public/finance.js && for f in server.mjs server/*.mjs database/*.mjs scripts/*.mjs; do node --check $f || exit 1; done",
+    "check": "for f in public/*.js server.mjs server/*.mjs database/*.mjs scripts/*.mjs; do node --check $f || exit 1; done",
     "db:migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {

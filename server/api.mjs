@@ -1,7 +1,7 @@
 // Rutas propias de Juntos. getSession se inyecta para poder probar sin Google.
 import {resolveUser} from '../database/auth.mjs';
 import {HttpError} from '../database/common.mjs';
-import {createTransaction, deleteGoal, deleteTransaction, getMonth, getPending, saveGoal, settleTransactions, updateTransaction} from '../database/finances.mjs';
+import {createTransaction, deleteGoal, deleteTransaction, getMonth, getPending, getRevision, saveGoal, settleTransactions, updateTransaction} from '../database/finances.mjs';
 import {createHousehold, createInvite, getHousehold, joinHousehold, updateMember} from '../database/households.mjs';
 
 const MAX_BODY = 10_000;
@@ -45,6 +45,7 @@ export function createApi({db, getSession, appOrigin}) {
     ['DELETE', '/api/months/:month/goal', ({userId, params, body}) => deleteGoal(db, userId, params.month, body)],
     ['POST', '/api/transactions', ({userId, body}) => createTransaction(db, userId, body)],
     ['GET', '/api/pending', ({userId}) => getPending(db, userId)],
+    ['GET', '/api/sync', ({userId}) => getRevision(db, userId)],
     ['POST', '/api/pending/settle', ({userId, body}) => settleTransactions(db, userId, body)],
     ['PATCH', '/api/transactions/:id', ({userId, params, body}) => updateTransaction(db, userId, params.id, body)],
     ['DELETE', '/api/transactions/:id', ({userId, params, body}) => deleteTransaction(db, userId, params.id, body)],

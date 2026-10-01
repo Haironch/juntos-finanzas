@@ -81,3 +81,6 @@ body.gated{overflow:hidden}
 .pending-amount{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#7a5a22;white-space:nowrap}
 .pending-list .button{min-height:36px;padding:8px 12px;font-size:13px}
 @media(max-width:720px){.pending-card{padding:18px}.pending-list li{grid-template-columns:1fr;gap:8px}.pending-list .button{width:100%}}
+/* Mes al que cuenta un movimiento */
+.field-hint{font-size:11px;color:#8d9c92;line-height:1.5}
+.for-month{display:block;font-size:10px;color:#9a7b3c;margin-top:3px}

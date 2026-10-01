@@ -184,6 +184,7 @@ const toLocalTransaction = t => ({
   amount: t.amountCents,
   description: t.description,
   date: t.occurredOn,
+  month: t.budgetMonth,
   category: t.category,
   // En un gasto compartido, person es quién pagó.
   person: PERSON[t.scope === 'personal' ? t.owner : t.paidBy],
@@ -215,6 +216,7 @@ export function saveTransaction(t, existing) {
     amountCents: t.amount,
     description: t.description,
     occurredOn: t.date,
+    budgetMonth: t.month || t.date.slice(0, 7),
     category: t.kind === 'income' ? existing?.category || 'Otros' : t.category,
     ...(t.scope === 'personal' && {owner: SLOT[t.person]}),
     ...(t.scope === 'shared' && {paidBy: SLOT[t.person], settled: t.settled === true}),

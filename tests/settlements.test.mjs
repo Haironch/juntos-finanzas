@@ -116,8 +116,8 @@ test('la base rechaza pagadores incoherentes aunque se escriba directo', async (
   const {rows: [home]} = await db.execute("SELECT household_id AS id, user_id FROM household_members WHERE slot = 'blue' LIMIT 1");
   const {rows: [stranger]} = await db.execute({sql: 'SELECT user_id FROM household_members WHERE household_id <> ? LIMIT 1', args: [home.id]});
   const insert = (scope, paidBy, settledBy = null) => db.execute({
-    sql: `INSERT INTO transactions(id,household_id,kind,scope,amount_cents,description,occurred_on,category,owner_user_id,created_by,paid_by,settled_at,settled_by)
-          VALUES (lower(hex(randomblob(8))),?,'expense',?,100,'x','2026-09-01','Otros',?,?,?,?,?)`,
+    sql: `INSERT INTO transactions(id,household_id,kind,scope,amount_cents,description,occurred_on,budget_month,category,owner_user_id,created_by,paid_by,settled_at,settled_by)
+          VALUES (lower(hex(randomblob(8))),?,'expense',?,100,'x','2026-09-01','2026-09','Otros',?,?,?,?,?)`,
     args: [home.id, scope, scope === 'personal' ? home.user_id : null, home.user_id, paidBy, settledBy && '2026-09-01T00:00:00.000Z', settledBy],
   });
   await assert.rejects(insert('shared', null), /requiere quién pagó/);

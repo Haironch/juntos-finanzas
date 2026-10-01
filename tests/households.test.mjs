@@ -71,8 +71,8 @@ test('cambiar colores no altera el reparto del centavo impar', async () => {
   const {rows: [home]} = await db.execute('SELECT id FROM households');
   const {rows: [blue]} = await db.execute("SELECT user_id FROM household_members WHERE slot = 'blue'");
   await db.execute({
-    sql: `INSERT INTO transactions(id,household_id,kind,scope,amount_cents,description,occurred_on,category,created_by,paid_by,settled_at,settled_by)
-          VALUES ('t',?,'expense','shared',101,'Súper','2026-09-28','Supermercado',?,?,'2026-09-28T00:00:00.000Z',?)`,
+    sql: `INSERT INTO transactions(id,household_id,kind,scope,amount_cents,description,occurred_on,budget_month,category,created_by,paid_by,settled_at,settled_by)
+          VALUES ('t',?,'expense','shared',101,'Súper','2026-09-28','2026-09','Supermercado',?,?,'2026-09-28T00:00:00.000Z',?)`,
     args: [home.id, blue.user_id, blue.user_id, blue.user_id],
   });
   await call('azul', 'PATCH', '/api/household/me', {color: 'teal'});

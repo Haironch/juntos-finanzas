@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cents,allocation,summary,validateTransaction} from '../public/finance.js';
+import {cents,allocation,summary,validateTransaction,nextMonth} from '../public/finance.js';
 const transaction=(props={})=>({id:'1',kind:'expense',person:'him',scope:'shared',amount:10000,date:'2026-09-15',category:'Hogar',description:'Ejemplo',...props});
 test('Convierte dinero sin perder centavos y rechaza importes inválidos',()=>{assert.equal(cents('8000'),800000);assert.equal(cents('0.29'),29);for(const value of ['-1','0','1.005','NaN','Infinity','1e3',''])assert.throws(()=>cents(value));});
 test('Un gasto compartido conserva cada centavo',()=>{assert.deepEqual(allocation(transaction()),[-5000,-5000]);assert.deepEqual(allocation(transaction({amount:101})),[-50,-51]);});
@@ -9,3 +9,4 @@ test('Ingresos, gastos compartidos y personales producen saldos correctos por me
 test('Fechas imposibles y montos fraccionarios se rechazan',()=>{assert.throws(()=>validateTransaction(transaction({date:'2026-02-30'})));assert.throws(()=>validateTransaction(transaction({amount:1.5})));assert.throws(()=>validateTransaction(transaction({description:' '})));});
 test('Un saldo negativo se conserva sin ocultar deuda',()=>{assert.equal(summary([transaction({scope:'personal',amount:1000})],'2026-09').total,-1000);});
 test('Un gasto compartido pendiente se descuenta completo a quien pagó hasta saldarse',()=>{assert.deepEqual(allocation(transaction({amount:101,settled:false})),[-101,0]);assert.deepEqual(allocation(transaction({amount:101,settled:false,person:'her'})),[0,-101]);assert.deepEqual(allocation(transaction({amount:101,settled:true})),[-50,-51]);});
+test('Un ingreso del 30 puede contar para el mes siguiente sin cambiar su fecha',()=>{const data=[transaction({kind:'income',amount:800000,date:'2026-09-30',month:'2026-10'}),transaction({kind:'income',amount:100,date:'2026-09-30'})];assert.equal(summary(data,'2026-10').totalIncome,800000);assert.equal(summary(data,'2026-09').totalIncome,100);assert.equal(nextMonth('2026-12'),'2027-01');assert.throws(()=>validateTransaction(transaction({date:'2026-09-30',month:'2026-11'})));assert.throws(()=>validateTransaction(transaction({date:'2026-09-30',month:'2026-08'})));validateTransaction(transaction({date:'2026-12-31',month:'2027-01'}));});

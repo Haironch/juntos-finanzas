@@ -68,9 +68,13 @@ Montos siempre en centavos enteros (`amountCents`); fechas `AAAA-MM-DD`; las per
 | `PUT /api/months/:month/goal` `{name, amountCents, version?}` | Sin `version` crea la meta; con la `version` actual la reemplaza. |
 | `DELETE /api/months/:month/goal` `{version}` | Elimina la meta del mes. |
 
+### Mes al que cuenta un movimiento
+
+Cada movimiento tiene su fecha (`occurredOn`) y el mes al que cuenta (`budgetMonth`): el de la fecha o el siguiente, por ejemplo el sueldo del 30 de septiembre para octubre. Por defecto es el mes de la fecha. `GET /api/months/:month` y los saldos filtran por `budgetMonth`. Al editar la fecha sin indicar `budgetMonth`, se conserva si sigue siendo válido y si no pasa al mes de la nueva fecha. La migración 005 dejó los movimientos existentes en el mes de su fecha.
+
 ### Gastos pagados por una persona
 
-Un gasto compartido guarda quién pagó (`paidBy`, por defecto quien lo registra) y si la otra persona ya transfirió su mitad (`settled`, por defecto `false`). Mientras está pendiente, quien pagó carga el gasto completo y la otra persona le debe su parte (`pendingCents`, con el centavo impar para pink). Al saldarlo se divide mitad y mitad **en el mes del gasto**. Los compartidos anteriores a la migración 004 quedaron saldados, sin cambiar saldos.
+Un gasto compartido guarda quién pagó (`paidBy`, por defecto quien lo registra) y si la otra persona ya transfirió su mitad (`settled`, por defecto `false`). Mientras está pendiente, quien pagó carga el gasto completo y la otra persona le debe su parte (`pendingCents`, con el centavo impar para pink). Al saldarlo se divide mitad y mitad **en el mes al que cuenta el gasto**. Los compartidos anteriores a la migración 004 quedaron saldados, sin cambiar saldos.
 
 | Ruta | Qué hace |
 | --- | --- |

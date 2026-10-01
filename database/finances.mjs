@@ -13,11 +13,22 @@ const MAX_SETTLE = 500;
 export const shareOf = (amountCents, slot) => slot === 'blue' ? Math.floor(amountCents / 2) : amountCents - Math.floor(amountCents / 2);
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
+export function nextMonth(month) {
+  const [year, number] = month.split('-').map(Number);
+  return number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, '0')}`;
+}
+
 export function parseMonth(month) {
   if (typeof month !== 'string' || !MONTH.test(month)) throw new HttpError(400, 'Mes inválido; usa AAAA-MM');
-  const [year, number] = month.split('-').map(Number);
-  const next = number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, '0')}`;
-  return {from: `${month}-01`, to: `${next}-01`};
+  return month;
+}
+
+// Mes al que cuenta: el de la fecha (por defecto) o el siguiente, p. ej. el sueldo del 30 para el mes que empieza.
+function budgetMonth(value, occurredOn) {
+  const own = occurredOn.slice(0, 7);
+  const month = value ?? own;
+  if (month !== own && month !== nextMonth(own)) throw new HttpError(400, 'budgetMonth debe ser el mes de la fecha o el siguiente');
+  return month;
 }
 
 function amount(value) {
@@ -66,12 +77,14 @@ function validTransaction(input, context) {
     if (input.settled != null && typeof input.settled !== 'boolean') throw new HttpError(400, 'settled debe ser true o false');
     settled = input.settled === true;
   }
+  const occurredOn = date(input.occurredOn);
   return {
     kind: input.kind,
     scope: input.scope,
     amountCents: amount(input.amountCents),
     description: requiredText(input.description, 'La descripción', 100),
-    occurredOn: date(input.occurredOn),
+    occurredOn,
+    budgetMonth: budgetMonth(input.budgetMonth, occurredOn),
     category,
     ownerUserId,
     paidByUserId,
@@ -79,7 +92,7 @@ function validTransaction(input, context) {
   };
 }
 
-const TRANSACTION_COLUMNS = `id, kind, scope, amount_cents, description, occurred_on, category,
+const TRANSACTION_COLUMNS = `id, kind, scope, amount_cents, description, occurred_on, budget_month, category,
   owner_user_id, created_by, paid_by, settled_at, settled_by, version, created_at, updated_at`;
 
 function toTransaction(row, context) {
@@ -90,6 +103,7 @@ function toTransaction(row, context) {
     amountCents: row.amount_cents,
     description: row.description,
     occurredOn: row.occurred_on,
+    budgetMonth: row.budget_month,
     category: row.category,
     owner: row.owner_user_id ? context.slots[row.owner_user_id] : null,
     createdBy: context.slots[row.created_by],
@@ -125,10 +139,10 @@ export async function createTransaction(client, userId, body = {}) {
     const context = await requireMember(tx, userId);
     const t = validTransaction(body, context);
     const {rows: [row]} = await tx.execute({
-      sql: `INSERT INTO transactions(id, household_id, kind, scope, amount_cents, description, occurred_on, category, owner_user_id, created_by,
+      sql: `INSERT INTO transactions(id, household_id, kind, scope, amount_cents, description, occurred_on, budget_month, category, owner_user_id, created_by,
               paid_by, settled_at, settled_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN ${NOW} END, ?) RETURNING ${TRANSACTION_COLUMNS}`,
-      args: [randomUUID(), context.householdId, t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.category, t.ownerUserId, userId,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN ${NOW} END, ?) RETURNING ${TRANSACTION_COLUMNS}`,
+      args: [randomUUID(), context.householdId, t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.budgetMonth, t.category, t.ownerUserId, userId,
         t.paidByUserId, t.settled ? 1 : 0, t.settled ? userId : null],
     });
     return toTransaction(row, context);
@@ -143,18 +157,23 @@ export async function updateTransaction(client, userId, id, body = {}) {
     const row = await findTransaction(tx, context, id);
     assertVersion(row, expected, current => toTransaction(current, context));
     const current = toTransaction(row, context);
-    const merged = {...current, ...pick(body, ['kind', 'scope', 'amountCents', 'description', 'occurredOn', 'category', 'owner', 'paidBy', 'settled'])};
+    const merged = {...current, ...pick(body, ['kind', 'scope', 'amountCents', 'description', 'occurredOn', 'budgetMonth', 'category', 'owner', 'paidBy', 'settled'])};
     if (merged.scope === 'shared') merged.owner = null;
+    // Si cambia la fecha sin indicar mes, se conserva el mes actual mientras siga siendo válido.
+    if (body.occurredOn !== undefined && body.budgetMonth === undefined && typeof merged.occurredOn === 'string') {
+      const own = merged.occurredOn.slice(0, 7);
+      if (merged.budgetMonth !== own && merged.budgetMonth !== nextMonth(own)) merged.budgetMonth = own;
+    }
     const t = validTransaction(merged, context);
     // Una transferencia ya marcada conserva su fecha y autor; desmarcarla la vuelve pendiente.
     const {rows: [updated]} = await tx.execute({
-      sql: `UPDATE transactions SET kind = ?, scope = ?, amount_cents = ?, description = ?, occurred_on = ?, category = ?,
+      sql: `UPDATE transactions SET kind = ?, scope = ?, amount_cents = ?, description = ?, occurred_on = ?, budget_month = ?, category = ?,
               owner_user_id = ?, paid_by = ?,
               settled_at = CASE WHEN ? THEN coalesce(settled_at, ${NOW}) END,
               settled_by = CASE WHEN ? THEN coalesce(settled_by, ?) END,
               version = version + 1, updated_at = ${NOW}
             WHERE household_id = ? AND id = ? AND version = ? RETURNING ${TRANSACTION_COLUMNS}`,
-      args: [t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.category, t.ownerUserId, t.paidByUserId,
+      args: [t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.budgetMonth, t.category, t.ownerUserId, t.paidByUserId,
         t.settled ? 1 : 0, t.settled ? 1 : 0, userId, context.householdId, row.id, expected],
     });
     return toTransaction(updated, context);
@@ -263,22 +282,22 @@ export async function deleteGoal(client, userId, month, body = {}) {
   });
 }
 
-// Movimientos, meta y saldos del mes en una sola lectura consistente. Sin arrastre entre meses.
+// Movimientos, meta y saldos del mes (por el mes al que cuentan) en una sola lectura consistente. Sin arrastre entre meses.
 export async function getMonth(client, userId, month) {
-  const {from, to} = parseMonth(month);
+  parseMonth(month);
   const tx = await client.transaction('read');
   try {
     const context = await requireMember(tx, userId);
-    const range = [context.householdId, from, to];
+    const range = [context.householdId, month];
     const {rows: transactions} = await tx.execute({
       sql: `SELECT ${TRANSACTION_COLUMNS} FROM transactions
-            WHERE household_id = ? AND occurred_on >= ? AND occurred_on < ? ORDER BY occurred_on DESC, created_at DESC`,
+            WHERE household_id = ? AND budget_month = ? ORDER BY occurred_on DESC, created_at DESC`,
       args: range,
     });
     const {rows: [goal]} = await tx.execute({sql: 'SELECT * FROM monthly_goals WHERE household_id = ? AND month = ?', args: [context.householdId, month]});
     const {rows: totals} = await tx.execute({
       sql: `SELECT slot, kind, sum(signed_amount_cents) AS cents FROM transaction_allocations
-            WHERE household_id = ? AND occurred_on >= ? AND occurred_on < ? GROUP BY slot, kind`,
+            WHERE household_id = ? AND budget_month = ? GROUP BY slot, kind`,
       args: range,
     });
     return {

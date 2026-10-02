@@ -2,6 +2,7 @@
 import {resolveUser} from '../database/auth.mjs';
 import {HttpError} from '../database/common.mjs';
 import {createTransaction, deleteGoal, deleteTransaction, getMonth, getPending, getRevision, saveGoal, settleTransactions, updateTransaction} from '../database/finances.mjs';
+import {clearDoneTasks, createTask, deleteTask, listTasks, updateTask} from '../database/tasks.mjs';
 import {createHousehold, createInvite, getHousehold, joinHousehold, updateMember} from '../database/households.mjs';
 
 const MAX_BODY = 10_000;
@@ -46,6 +47,12 @@ export function createApi({db, getSession, appOrigin}) {
     ['POST', '/api/transactions', ({userId, body}) => createTransaction(db, userId, body)],
     ['GET', '/api/pending', ({userId}) => getPending(db, userId)],
     ['GET', '/api/sync', ({userId}) => getRevision(db, userId)],
+    ['GET', '/api/tasks', ({userId}) => listTasks(db, userId)],
+    ['POST', '/api/tasks', ({userId, body}) => createTask(db, userId, body)],
+    // Antes de /api/tasks/:id para que "done" no se tome como un id.
+    ['DELETE', '/api/tasks/done', ({userId}) => clearDoneTasks(db, userId)],
+    ['PATCH', '/api/tasks/:id', ({userId, params, body}) => updateTask(db, userId, params.id, body)],
+    ['DELETE', '/api/tasks/:id', ({userId, params, body}) => deleteTask(db, userId, params.id, body)],
     ['POST', '/api/pending/settle', ({userId, body}) => settleTransactions(db, userId, body)],
     ['PATCH', '/api/transactions/:id', ({userId, params, body}) => updateTransaction(db, userId, params.id, body)],
     ['DELETE', '/api/transactions/:id', ({userId, params, body}) => deleteTransaction(db, userId, params.id, body)],

@@ -297,3 +297,68 @@ tr.flash td,tr.flash{animation:row-flash 2.2s ease-out}
 :root[data-theme=dark] .pending-filter small{color:#b39661}
 :root[data-theme=dark] .pending-filter .selected{background:#3d3220;color:#f3d49b;box-shadow:none}
 :root[data-theme=dark] .pending-filter .selected small{color:#e3c58c}
+/* Pendientes: botón de la barra superior */
+.header-right{display:flex;align-items:center;gap:10px}
+.tasks-button{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:20px;background:#f0f5f2;color:#2f5d4c;font-size:13px;font-weight:600;position:relative}
+.tasks-button[hidden]{display:none}
+.tasks-icon{font-size:15px;line-height:1}
+.tasks-count{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#2f5d4c;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.tasks-count.urgent{background:#c4475a}
+.tasks-count[hidden]{display:none}
+@media(max-width:720px){
+  .local-pill{display:none}
+  .offline .local-pill{display:inline-block}
+  .tasks-button{padding:7px 10px}
+  /* En el teléfono solo el nombre de la sección, para que quepa el botón de Pendientes */
+  .breadcrumb{font-size:0}
+  .breadcrumb b{font-size:16px;font-weight:650}
+}
+/* Pendientes: hoja con la lista */
+.task-tabs{margin-bottom:14px}
+.task-tabs button{flex:1;font-size:13px;padding:9px 6px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.task-tabs b{font-size:11px;background:#e1ebe6;color:#2f5d4c;border-radius:9px;padding:1px 7px}
+.task-form{margin-bottom:6px}
+.task-input{display:flex;gap:8px}
+.task-input input,.task-extra input{flex:1;min-width:0;border:1px solid #dfe6e3;border-radius:10px;padding:11px 12px;font-size:16px;background:#fff;color:#395348;min-height:46px}
+.task-input .button{min-width:48px;min-height:46px;font-size:22px;padding:0;border-radius:10px}
+.task-extra{display:flex;gap:8px;margin-top:8px}
+.task-extra label{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;font-size:12px;color:#7a8d83}
+.task-extra input{width:100%}
+.task-extra input[type=date]{-webkit-appearance:none;appearance:none}
+.task-list{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+.task{display:flex;align-items:center;gap:10px;border:1px solid #e6ece9;border-radius:12px;padding:10px 10px 10px 12px;background:#fff}
+.task-check{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:2px solid #b9c9c1;display:flex;align-items:center;justify-content:center;color:transparent;font-size:15px;font-weight:800;transition:background .2s,border-color .2s,color .2s}
+.task-check span{transform:scale(.4);transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.task.done .task-check,.task.checking .task-check{background:#3a8a6b;border-color:#3a8a6b;color:#fff}
+.task.done .task-check span,.task.checking .task-check span{transform:scale(1)}
+.task.checking{animation:task-done .35s ease-out}
+@keyframes task-done{50%{transform:scale(.97);background:#eff7f2}}
+.task-body{flex:1;min-width:0}
+.task-body strong{display:block;font-size:15px;font-weight:600;color:#2c4339;overflow-wrap:anywhere}
+.task-body small{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:11.5px;color:#8a9a92;margin-top:3px}
+.task.done .task-body strong{text-decoration:line-through;color:#9aa8a1;font-weight:500}
+.task-urgent{color:#c4475a;font-weight:600}
+.task-action{flex-shrink:0;font-size:12px;font-weight:600;color:#3a7a60;padding:8px;border-radius:8px;min-height:36px}
+.task-action:active{background:#eff7f2}
+.task-delete{font-size:20px;color:#a0aea7;font-weight:400;padding:4px 8px}
+.task-empty{text-align:center;color:#8a9a92;font-size:14px;padding:22px 0 10px}
+.task-done-section{margin-top:16px;border-top:1px solid #eef2f0;padding-top:10px}
+.task-done-heading{display:flex;justify-content:space-between;align-items:center}
+@media(max-width:720px){.tasks-dialog{min-height:60dvh}}
+/* Pendientes en modo oscuro */
+:root[data-theme=dark] .tasks-button{background:#1c3329;color:#8fd1af}
+:root[data-theme=dark] .tasks-count{background:#3a8a6b}
+:root[data-theme=dark] .tasks-count.urgent{background:#c4475a}
+:root[data-theme=dark] .task-tabs b{background:#24403a;color:#8fd1af}
+:root[data-theme=dark] .task-input input,:root[data-theme=dark] .task-extra input{background:#1b2a33;border-color:#2b3d47;color:#e3ebef}
+:root[data-theme=dark] .task-extra label,:root[data-theme=dark] .task-empty,:root[data-theme=dark] .task-body small{color:#8a9aa3}
+:root[data-theme=dark] .task{background:#18252d;border-color:#24343e}
+:root[data-theme=dark] .task-body strong{color:#e3ebef}
+:root[data-theme=dark] .task.done .task-body strong{color:#6d7f88}
+:root[data-theme=dark] .task-check{border-color:#4a5f69}
+:root[data-theme=dark] .task-action{color:#8fd1af}
+:root[data-theme=dark] .task-action:active{background:#1c3329}
+:root[data-theme=dark] .task-done-section{border-color:#24343e}
+:root[data-theme=dark] .task-urgent{color:#f08a9c}
+@keyframes task-done-dark{50%{transform:scale(.97);background:#1c3329}}
+:root[data-theme=dark] .task.checking{animation-name:task-done-dark}

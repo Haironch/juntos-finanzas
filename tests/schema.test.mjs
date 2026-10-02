@@ -164,7 +164,7 @@ test('la migración 006 no cambia los saldos de lo ya registrado', async () => {
         ('q','home','expense','shared',3000,'Luz','2026-09-04','2026-09','Hogar',NULL,'b','b',NULL,NULL)`,
     ], 'write');
     const before = await totals();
-    assert.deepEqual(await migrate(old, migrations), ['006_loans.sql']);
+    assert.deepEqual(await migrate(old, migrations.filter(m => m.name < '007')), ['006_loans.sql']);
     assert.deepEqual(await totals(), before);
   } finally {
     old.close();

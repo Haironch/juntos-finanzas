@@ -14,7 +14,7 @@ const ON_VERCEL = Boolean(process.env.VERCEL);
 const PORT = Number(process.env.PORT) || 5173;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const files = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/finance.js': 'finance.js', '/cloud.js': 'cloud.js', '/styles.css': 'styles.css', '/favicon.svg': 'favicon.svg',
-  '/native.js': 'native.js', '/effects.js': 'effects.js', '/sw.js': 'sw.js', '/manifest.webmanifest': 'manifest.webmanifest',
+  '/native.js': 'native.js', '/effects.js': 'effects.js', '/tasks.js': 'tasks.js', '/sw.js': 'sw.js', '/manifest.webmanifest': 'manifest.webmanifest',
   '/icons/icon-192.png': 'icons/icon-192.png', '/icons/icon-512.png': 'icons/icon-512.png', '/icons/apple-touch-icon.png': 'icons/apple-touch-icon.png'};
 const types = {html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', svg: 'image/svg+xml', png: 'image/png', webmanifest: 'application/manifest+json'};
 

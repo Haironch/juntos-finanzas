@@ -240,6 +240,14 @@ export async function loadMonth(month) {
   };
 }
 
+// Lista compartida de pendientes (cosas por comprar y pagos por hacer).
+const toLocalTask = t => ({...t, createdBy: PERSON[t.createdBy], doneBy: t.doneBy && PERSON[t.doneBy]});
+export const loadTasks = () => request('GET', '/api/tasks').then(data => data.items.map(toLocalTask));
+export const createTask = body => request('POST', '/api/tasks', body).then(toLocalTask);
+export const updateTask = (task, changes) => request('PATCH', `/api/tasks/${encodeURIComponent(task.id)}`, {...changes, version: task.version}).then(toLocalTask);
+export const deleteTask = task => request('DELETE', `/api/tasks/${encodeURIComponent(task.id)}`, {version: task.version});
+export const clearDoneTasks = () => request('DELETE', '/api/tasks/done', {});
+
 // Huella del hogar para saber, sin descargar todo, si la pareja cambió algo.
 export const revision = () => request('GET', '/api/sync').then(data => data.revision);
 

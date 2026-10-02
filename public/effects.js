@@ -64,6 +64,18 @@ function playExpense() {
   tone(220, t + 0.13, 0.3, {type: 'sine', gain: 0.05, slideTo: 165});
 }
 
+// "Tic" corto al marcar un pendiente de la lista como hecho.
+export function tick() {
+  if (!audio || !soundEnabled()) return;
+  try {
+    const t = audio.currentTime + 0.01;
+    tone(1760, t, 0.06, {type: 'triangle', gain: 0.08});
+    tone(2637, t + 0.05, 0.14, {type: 'sine', gain: 0.07});
+  } catch {
+    // Adorno opcional.
+  }
+}
+
 // Monto grande al centro con monedas que saltan (ingreso) o billetes que caen (gasto).
 function burst(kind, text) {
   const element = document.createElement('div');

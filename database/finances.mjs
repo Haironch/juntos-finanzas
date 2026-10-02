@@ -244,17 +244,18 @@ async function pendingFor(executor, context) {
   return {items, owes, balance};
 }
 
-// Huella del hogar: cambia con cualquier alta, edición o baja de movimientos y metas, y con nombres o colores.
+// Huella del hogar: cambia con cualquier alta, edición o baja de movimientos, metas y pendientes de la lista, y con nombres o colores.
 // La app la consulta cada pocos segundos para traer los cambios de la pareja sin descargar todo.
 async function revisionFor(executor, householdId) {
   const {rows: [row]} = await executor.execute({
     sql: `SELECT
             (SELECT count(*) || ':' || coalesce(sum(version), 0) || ':' || coalesce(max(updated_at), '') FROM transactions WHERE household_id = ?1) AS t,
             (SELECT count(*) || ':' || coalesce(sum(version), 0) || ':' || coalesce(max(updated_at), '') FROM monthly_goals WHERE household_id = ?1) AS g,
-            (SELECT group_concat(slot || '=' || color || '=' || display_name, '|') FROM (SELECT * FROM household_members WHERE household_id = ?1 ORDER BY slot)) AS m`,
+            (SELECT group_concat(slot || '=' || color || '=' || display_name, '|') FROM (SELECT * FROM household_members WHERE household_id = ?1 ORDER BY slot)) AS m,
+            (SELECT count(*) || ':' || coalesce(sum(version), 0) || ':' || coalesce(max(updated_at), '') FROM household_tasks WHERE household_id = ?1) AS k`,
     args: [householdId],
   });
-  return createHash('sha256').update(`${row.t}#${row.g}#${row.m}`).digest('hex').slice(0, 16);
+  return createHash('sha256').update(`${row.t}#${row.g}#${row.m}#${row.k}`).digest('hex').slice(0, 16);
 }
 
 export async function getRevision(client, userId) {

@@ -285,3 +285,15 @@ tr.flash td,tr.flash{animation:row-flash 2.2s ease-out}
 .sound-toggle{margin:14px 0 0}
 @media(prefers-reduced-motion:reduce){.money-burst .burst-amount{animation-duration:1.2s!important;animation-name:burst-fade!important}.bump,tr.flash,tr.flash td{animation:none}}
 @keyframes burst-fade{0%,100%{opacity:0}15%,70%{opacity:1}}
+/* Filtro de pendientes por persona */
+.pending-filter{margin:12px 0 4px;background:#f5ecd9}
+.pending-filter button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 6px;font-size:12px;color:#8a6a33;line-height:1.2}
+.pending-filter button>span{display:inline-flex;align-items:center;gap:5px;font-weight:600}
+.pending-filter small{font-size:10.5px;color:#a3854f;font-variant-numeric:tabular-nums}
+.pending-filter .selected{background:#fff;color:#6b4f1f;box-shadow:0 1px 4px #5a42141f}
+.pending-filter .selected small{color:#8a6a33}
+:root[data-theme=dark] .pending-filter{background:#2b2416}
+:root[data-theme=dark] .pending-filter button{color:#d8b77d}
+:root[data-theme=dark] .pending-filter small{color:#b39661}
+:root[data-theme=dark] .pending-filter .selected{background:#3d3220;color:#f3d49b;box-shadow:none}
+:root[data-theme=dark] .pending-filter .selected small{color:#e3c58c}

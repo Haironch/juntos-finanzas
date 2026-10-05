@@ -1,6 +1,5 @@
 // Lista compartida de pendientes: cosas por comprar (buy) y pagos por hacer (pay). Siempre acotada al hogar de la sesión.
-import {randomUUID} from 'node:crypto';
-import {HttpError, memberContext, NOW, requiredText, write} from './common.mjs';
+import {clientId, HttpError, memberContext, NOW, requiredText, write} from './common.mjs';
 
 const KINDS = ['buy', 'pay'];
 const MAX_CENTS = 100_000_000_000;
@@ -68,11 +67,18 @@ export async function createTask(client, userId, body = {}) {
   const title = requiredText(body.title, 'El pendiente', 100);
   const amountCents = optionalAmount(body.amountCents);
   const dueOn = optionalDate(body.dueOn);
+  const id = clientId(body.id);
   return write(client, async tx => {
     const context = await requireMember(tx, userId);
+    // Reenvío de un pendiente creado sin señal: se devuelve el que ya existe.
+    const {rows: [existing]} = await tx.execute({sql: 'SELECT household_id FROM household_tasks WHERE id = ?', args: [id]});
+    if (existing) {
+      if (existing.household_id !== context.householdId) throw new HttpError(409, 'Ese identificador ya está en uso');
+      return toTask(await findTask(tx, context, id), context);
+    }
     const {rows: [row]} = await tx.execute({
       sql: `INSERT INTO household_tasks(id, household_id, kind, title, amount_cents, due_on, created_by) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING ${COLUMNS}`,
-      args: [randomUUID(), context.householdId, body.kind, title, amountCents, dueOn, userId],
+      args: [id, context.householdId, body.kind, title, amountCents, dueOn, userId],
     });
     return toTask(row, context);
   });
@@ -83,7 +89,9 @@ export async function updateTask(client, userId, id, body = {}) {
   return write(client, async tx => {
     const context = await requireMember(tx, userId);
     const row = await findTask(tx, context, id);
-    assertVersion(row, body.version, context);
+    // Solo marcar/desmarcar como hecho puede ir sin versión (llega desde la cola sin señal): gana el último.
+    const onlyDone = body.version === undefined && Object.keys(body).every(key => key === 'done');
+    if (!onlyDone) assertVersion(row, body.version, context);
     const title = body.title === undefined ? row.title : requiredText(body.title, 'El pendiente', 100);
     const kind = body.kind === undefined ? row.kind : body.kind;
     if (!KINDS.includes(kind)) throw new HttpError(400, 'kind debe ser buy o pay');
@@ -107,7 +115,8 @@ export async function deleteTask(client, userId, id, body = {}) {
   return write(client, async tx => {
     const context = await requireMember(tx, userId);
     const row = await findTask(tx, context, id);
-    assertVersion(row, body.version, context);
+    // Sin versión (desde la cola sin señal) se borra igual: es una lista de compras.
+    if (body.version !== undefined) assertVersion(row, body.version, context);
     await tx.execute({sql: 'DELETE FROM household_tasks WHERE household_id = ? AND id = ?', args: [context.householdId, row.id]});
     return {deleted: row.id};
   });

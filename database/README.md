@@ -109,6 +109,10 @@ Tabla `push_subscriptions` (migración 008): un registro por teléfono. Al crear
 | `POST /api/push/subscribe` `{endpoint, keys: {p256dh, auth}}` | Registra este teléfono para el usuario de la sesión. |
 | `DELETE /api/push/subscribe` `{endpoint}` | Deja de avisar a este teléfono. |
 
+### Registros hechos sin señal
+
+`POST /api/transactions` y `POST /api/tasks` aceptan un `id` (UUID) creado en el teléfono. Si ya existe en el mismo hogar se devuelve el guardado (`replayed: true` en movimientos) sin duplicarlo ni volver a notificar; si pertenece a otro hogar, 409. Desde la cola, `PATCH /api/tasks/:id` con solo `{done}` y `DELETE /api/tasks/:id` sin `version` se aceptan (gana el último).
+
 Ediciones simultáneas: toda edición o borrado exige la `version` que se leyó. Si la pareja cambió el dato antes, la API responde 409 con `current` (el dato vigente) para mostrarlo y decidir, en lugar de sobrescribirlo. Movimientos de otro hogar responden 404.
 
 ## Interfaz

@@ -60,7 +60,8 @@ export function createApi({db, getSession, appOrigin, notifier = null, pushPubli
     ['DELETE', '/api/months/:month/goal', ({userId, params, body}) => deleteGoal(db, userId, params.month, body)],
     ['POST', '/api/transactions', async ({userId, body}) => {
       const transaction = await createTransaction(db, userId, body);
-      if (notifier) await quietly(() => notifier.transactionCreated(userId, transaction));
+      // Un reenvío (replayed) ya avisó la primera vez.
+      if (notifier && !transaction.replayed) await quietly(() => notifier.transactionCreated(userId, transaction));
       return transaction;
     }],
     ['GET', '/api/pending', ({userId}) => getPending(db, userId)],

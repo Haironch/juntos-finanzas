@@ -1,6 +1,7 @@
 // "Pendientes": lista compartida de cosas por comprar y pagos por hacer, abierta desde la barra superior.
 import * as cloud from './cloud.js';
 import * as effects from './effects.js';
+import * as outbox from './outbox.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -50,6 +51,7 @@ function taskRow(task) {
     meta.push(`<span class="${urgent ? 'task-urgent' : ''}">${text}</span>`);
   }
   if (task.done && task.doneBy) meta.push(`hecho por ${esc(names[task.doneBy] || '')}`);
+  if (task.queued) meta.push(`<span class="task-queued${task.queueError ? ' failed' : ''}">${task.queueError ? '⚠ no se pudo enviar' : '⏳ sin enviar'}</span>`);
   return `<li class="task${task.done ? ' done' : ''}" data-id="${esc(task.id)}">
     <button class="task-check" data-action="toggle" aria-label="${task.done ? 'Desmarcar' : 'Marcar como hecho'}: ${esc(task.title)}" aria-pressed="${task.done}"><span>✓</span></button>
     <div class="task-body"><strong>${esc(task.title)}</strong><small>${meta.join(' · ')}</small></div>
@@ -86,22 +88,53 @@ function showError(error) {
   if (error.status === 409 || error.status === 404) refresh();
 }
 
+// Sin señal la lista sigue funcionando: los cambios van a la cola y se aplican encima de lo último cargado.
+const offlineError = error => error.status === 0;
+
+function applyQueue(list) {
+  let result = list.map(t => ({...t}));
+  for (const op of outbox.items()) {
+    if (op.type === 'task-create' && !result.some(t => t.id === op.body.id)) result.push({...op.local, queued: true, queueError: op.error});
+    if (op.type === 'task-done') {
+      const task = result.find(t => t.id === op.taskId);
+      if (task) Object.assign(task, {done: op.done, doneBy: op.done ? cloud.myPerson() : null, queued: true, queueError: op.error});
+    }
+    if (op.type === 'task-delete') result = result.filter(t => t.id !== op.taskId);
+  }
+  return result;
+}
+
+function queueAndShow(op) {
+  outbox.add(op);
+  items = applyQueue(items);
+  updateBadge();
+  if ($('#tasks-dialog').open) render();
+}
+
+export function markDoneOffline(task) {
+  queueAndShow({id: `done-${task.id}`, type: 'task-done', taskId: task.id, done: true});
+}
+
 async function add(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form));
-  const body = {kind: tab, title: data.title};
+  const body = {id: crypto.randomUUID(), kind: tab, title: data.title.trim()};
   if (data.amount) body.amountCents = Math.round(Number(data.amount) * 100);
   if (data.dueOn) body.dueOn = data.dueOn;
   try {
+    if (cloud.isOffline()) throw Object.assign(new Error('Sin señal'), {status: 0});
     const task = await cloud.createTask(body);
     items.push(task);
     form.reset();
     await refresh();
-    $('#tasks-dialog #task-form input[name=title]')?.focus();
   } catch (error) {
-    showError(error);
+    if (!offlineError(error)) return showError(error);
+    const local = {id: body.id, kind: body.kind, title: body.title, amountCents: body.amountCents ?? null, dueOn: body.dueOn ?? null, createdBy: cloud.myPerson(), done: false, doneBy: null, version: 0};
+    form.reset();
+    queueAndShow({id: body.id, type: 'task-create', body, local});
   }
+  $('#tasks-dialog #task-form input[name=title]')?.focus();
 }
 
 async function onClick(event) {
@@ -138,12 +171,36 @@ async function onClick(event) {
         button.closest('li').classList.add('checking');
         effects.tick();
       }
-      // Deja ver la animación del check antes de redibujar.
-      await Promise.all([cloud.updateTask(task, {done: !task.done}), new Promise(resolve => setTimeout(resolve, task.done ? 0 : 350))]);
-      await refresh();
+      const pause = new Promise(resolve => setTimeout(resolve, task.done ? 0 : 350));
+      try {
+        if (task.queued || cloud.isOffline()) throw Object.assign(new Error('Sin señal'), {status: 0});
+        // Deja ver la animación del check antes de redibujar.
+        await Promise.all([cloud.updateTask(task, {done: !task.done}), pause]);
+        await refresh();
+      } catch (error) {
+        if (!offlineError(error)) throw error;
+        await pause;
+        queueAndShow({id: `done-${task.id}`, type: 'task-done', taskId: task.id, done: !task.done});
+      }
     } else if (action === 'delete') {
-      await cloud.deleteTask(task);
-      await refresh();
+      const createdOffline = outbox.items().some(op => op.type === 'task-create' && op.id === task.id);
+      if (createdOffline) {
+        // Nunca llegó al servidor: basta con sacarlo de la cola.
+        outbox.remove(op => op.id === task.id || op.taskId === task.id);
+        items = items.filter(t => t.id !== task.id);
+        updateBadge();
+        render();
+        return;
+      }
+      try {
+        if (cloud.isOffline()) throw Object.assign(new Error('Sin señal'), {status: 0});
+        await cloud.deleteTask(task);
+        await refresh();
+      } catch (error) {
+        if (!offlineError(error)) throw error;
+        outbox.remove(op => op.taskId === task.id);
+        queueAndShow({id: `delete-${task.id}`, type: 'task-delete', taskId: task.id});
+      }
     } else if (action === 'expense') {
       dialog.close();
       openExpense(task);
@@ -163,13 +220,16 @@ export async function refresh() {
   try {
     const known = new Set(items.map(t => t.id));
     const first = !items.length && !$('#tasks-button').dataset.loaded;
-    items = await cloud.loadTasks();
+    items = applyQueue(await cloud.loadTasks());
     $('#tasks-button').dataset.loaded = '1';
     updateBadge();
     if ($('#tasks-dialog').open) render();
     const me = cloud.myPerson();
     return first ? [] : items.filter(t => !known.has(t.id) && t.createdBy !== me);
   } catch {
+    // Sin señal y sin copia guardada: se muestra lo que ya había, con la cola encima.
+    items = applyQueue(items);
+    updateBadge();
     return [];
   }
 }

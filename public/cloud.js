@@ -3,6 +3,7 @@
 import {bindSoundToggle} from './effects.js';
 import {bindThemeChoice} from './native.js';
 import {bindPushSection} from './push.js';
+import * as outbox from './outbox.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -34,18 +35,27 @@ const SLOT = {him: 'blue', her: 'pink'};
 let me = null;
 let household = null;
 
+// Con señal mala no se espera para siempre: a los 15 segundos se trata como sin conexión (status 0),
+// y los registros nuevos se guardan en la cola para enviarse después.
+const TIMEOUT_MS = 15000;
+
 async function request(method, path, body) {
   let response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     response = await fetch(path, {
       method,
       credentials: 'same-origin',
       headers: body === undefined ? {} : {'Content-Type': 'application/json'},
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
     });
   } catch {
     setOffline(true);
-    throw Object.assign(new Error('Sin conexión. Revisa tu internet e inténtalo de nuevo.'), {status: 0});
+    throw Object.assign(new Error('Sin señal. Los registros nuevos se guardan y se envían solos; para editar, borrar o saldar se necesita conexión.'), {status: 0});
+  } finally {
+    clearTimeout(timer);
   }
   // El service worker marca las respuestas guardadas que entrega sin conexión.
   setOffline(response.headers.has('x-juntos-offline'));
@@ -55,11 +65,13 @@ async function request(method, path, body) {
 }
 
 let offline = false;
+export const isOffline = () => offline || navigator.onLine === false;
+// La app muestra el estado (sin señal, por enviar…) en la etiqueta de la barra superior.
 function setOffline(value) {
   if (value === offline || !household) return;
   offline = value;
   document.body.classList.toggle('offline', offline);
-  $('.local-pill').textContent = offline ? 'Sin conexión' : 'En la nube';
+  dispatchEvent(new Event('connectionchange'));
 }
 
 const member = slot => household?.members.find(m => m.slot === slot);
@@ -175,6 +187,7 @@ async function signOut() {
     await request('POST', '/api/auth/sign-out', {});
     // Los datos del hogar guardados para usar sin conexión no deben quedar en el teléfono.
     await globalThis.caches?.delete('juntos-data');
+    outbox.clearAll();
   } finally {
     location.href = '/';
   }
@@ -254,14 +267,29 @@ export const pushKey = () => request('GET', '/api/push/key');
 export const subscribePush = subscription => request('POST', '/api/push/subscribe', subscription);
 export const unsubscribePush = endpoint => request('DELETE', '/api/push/subscribe', {endpoint});
 
+export const householdId = () => household.id;
+
+// Envía una operación de la cola sin señal. Si la pareja ya borró ese pendiente, no hay nada que hacer.
+export async function sendQueued(op) {
+  const ignoreMissing = error => {
+    if (error.status !== 404) throw error;
+  };
+  if (op.type === 'transaction') return request('POST', '/api/transactions', op.body);
+  if (op.type === 'task-create') return request('POST', '/api/tasks', op.body);
+  if (op.type === 'task-done') return request('PATCH', `/api/tasks/${encodeURIComponent(op.taskId)}`, {done: op.done}).catch(ignoreMissing);
+  if (op.type === 'task-delete') return request('DELETE', `/api/tasks/${encodeURIComponent(op.taskId)}`, {}).catch(ignoreMissing);
+}
+
 // Huella del hogar para saber, sin descargar todo, si la pareja cambió algo.
 export const revision = () => request('GET', '/api/sync').then(data => data.revision);
 
 // Marca como transferidos los gastos indicados (con la versión que se vio en pantalla).
 export const settle = items => request('POST', '/api/pending/settle', {items: items.map(({id, version}) => ({id, version}))});
 
-export function saveTransaction(t, existing) {
-  const body = {
+// Cuerpo para la API; los nuevos llevan el id creado en el teléfono para que un reenvío no los duplique.
+export function transactionBody(t, existing) {
+  return {
+    ...(!existing && {id: t.id}),
     kind: t.kind,
     scope: t.scope,
     amountCents: t.amount,
@@ -274,6 +302,10 @@ export function saveTransaction(t, existing) {
     ...(t.loan && {settled: t.settled === true}),
     ...(t.scope === 'shared' && {paidBy: SLOT[t.person], settled: t.settled === true}),
   };
+}
+
+export function saveTransaction(t, existing) {
+  const body = transactionBody(t, existing);
   if (!existing) return request('POST', '/api/transactions', body);
   return request('PATCH', `/api/transactions/${encodeURIComponent(existing.id)}`, {...body, version: existing.version});
 }

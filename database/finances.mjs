@@ -1,7 +1,7 @@
 // Movimientos, metas y resumen mensual. Todo se acota al hogar del usuario de la sesión.
 // Las personas se identifican por su posición (blue/pink), igual que en transaction_allocations.
-import {createHash, randomUUID} from 'node:crypto';
-import {HttpError, memberContext, NOW, requiredText, write} from './common.mjs';
+import {createHash} from 'node:crypto';
+import {clientId, HttpError, memberContext, NOW, requiredText, write} from './common.mjs';
 
 export const CATEGORIES = ['Hogar', 'Supermercado', 'Comida', 'Transporte', 'Salud', 'Ocio', 'Compras', 'Otros'];
 const MAX_CENTS = 100_000_000_000;
@@ -145,15 +145,22 @@ function assertVersion(current, expected, toJson) {
   }
 }
 
+// Con el id del teléfono, reenviar el mismo registro devuelve el ya guardado (replayed) en vez de duplicarlo.
 export async function createTransaction(client, userId, body = {}) {
+  const id = clientId(body.id);
   return write(client, async tx => {
     const context = await requireMember(tx, userId);
+    const {rows: [existing]} = await tx.execute({sql: 'SELECT household_id FROM transactions WHERE id = ?', args: [id]});
+    if (existing) {
+      if (existing.household_id !== context.householdId) throw new HttpError(409, 'Ese identificador ya está en uso');
+      return {...toTransaction(await findTransaction(tx, context, id), context), replayed: true};
+    }
     const t = validTransaction(body, context);
     const {rows: [row]} = await tx.execute({
       sql: `INSERT INTO transactions(id, household_id, kind, scope, amount_cents, description, occurred_on, budget_month, category, owner_user_id, created_by,
               paid_by, settled_at, settled_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN ${NOW} END, ?) RETURNING ${TRANSACTION_COLUMNS}`,
-      args: [randomUUID(), context.householdId, t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.budgetMonth, t.category, t.ownerUserId, userId,
+      args: [id, context.householdId, t.kind, t.scope, t.amountCents, t.description, t.occurredOn, t.budgetMonth, t.category, t.ownerUserId, userId,
         t.paidByUserId, t.settled ? 1 : 0, t.settled ? userId : null],
     });
     return toTransaction(row, context);

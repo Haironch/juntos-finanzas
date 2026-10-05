@@ -1,8 +1,8 @@
 // Service worker de Juntos: abre al instante y permite ver lo último cargado sin conexión.
 // Siempre intenta la red primero, así cada despliegue llega en la siguiente apertura.
-const SHELL = 'juntos-shell-v4';
+const SHELL = 'juntos-shell-v5';
 const DATA = 'juntos-data';
-const FILES = ['/', '/app.js', '/finance.js', '/cloud.js', '/native.js', '/effects.js', '/tasks.js', '/push.js', '/styles.css', '/favicon.svg', '/manifest.webmanifest', '/icons/icon-192.png'];
+const FILES = ['/', '/app.js', '/finance.js', '/cloud.js', '/native.js', '/effects.js', '/tasks.js', '/push.js', '/outbox.js', '/styles.css', '/favicon.svg', '/manifest.webmanifest', '/icons/icon-192.png'];
 // Datos del hogar que se pueden mostrar sin conexión (nunca la sesión ni la sincronización).
 const CACHEABLE_API = /^\/api\/(me|months\/[0-9-]+|pending|tasks)$/;
 

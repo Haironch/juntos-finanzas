@@ -1,4 +1,6 @@
 // Utilidades compartidas por los módulos de datos del servidor.
+import {randomUUID} from 'node:crypto';
+
 export const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ','now')";
 
 // details viaja en la respuesta JSON junto al mensaje (por ejemplo, la versión actual en un conflicto).
@@ -14,6 +16,14 @@ export function requiredText(value, label, max) {
   const text = typeof value === 'string' ? value.trim() : '';
   if (!text || text.length > max) throw new HttpError(400, `${label} debe tener entre 1 y ${max} caracteres`);
   return text;
+}
+
+// Identificador creado en el teléfono (UUID) para que reenviar un registro hecho sin señal no lo duplique.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function clientId(value) {
+  if (value == null) return randomUUID();
+  if (typeof value !== 'string' || !UUID.test(value)) throw new HttpError(400, 'id debe ser un UUID');
+  return value.toLowerCase();
 }
 
 // Abre una transacción de escritura; se revierte si fn lanza un error.

@@ -26,7 +26,9 @@ test('al saldar se divide mitad y mitad y desaparece de pendientes', async () =>
   const t = (await add('azul', expense())).body;
   const result = await settle('rosa', [t]);
   assert.equal(result.status, 200);
-  assert.deepEqual(result.body, {items: [], owes: {blue: 0, pink: 0}, balance: null});
+  const {settled, ...pending} = result.body;
+  assert.deepEqual(pending, {items: [], owes: {blue: 0, pink: 0}, balance: null});
+  assert.deepEqual(settled.map(t => [t.id, t.pendingCents]), [[t.id, 5001]]);
   const data = await month('azul');
   assert.deepEqual(data.summary.expense, {blue: 5000, pink: 5001});
   const saved = data.transactions[0];

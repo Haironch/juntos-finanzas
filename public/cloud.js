@@ -2,6 +2,7 @@
 // Si el servidor no tiene inicio de sesión configurado (/api/me responde 503), la app sigue en modo local.
 import {bindSoundToggle} from './effects.js';
 import {bindThemeChoice} from './native.js';
+import {bindPushSection} from './push.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -248,6 +249,11 @@ export const updateTask = (task, changes) => request('PATCH', `/api/tasks/${enco
 export const deleteTask = task => request('DELETE', `/api/tasks/${encodeURIComponent(task.id)}`, {version: task.version});
 export const clearDoneTasks = () => request('DELETE', '/api/tasks/done', {});
 
+// Notificaciones push de este teléfono.
+export const pushKey = () => request('GET', '/api/push/key');
+export const subscribePush = subscription => request('POST', '/api/push/subscribe', subscription);
+export const unsubscribePush = endpoint => request('DELETE', '/api/push/subscribe', {endpoint});
+
 // Huella del hogar para saber, sin descargar todo, si la pareja cambió algo.
 export const revision = () => request('GET', '/api/sync').then(data => data.revision);
 
@@ -302,6 +308,7 @@ export function openSettings(onChange) {
       <ul class="member-list">${household.members.map(m => `<li><i class="dot" style="background:${PALETTE[m.color][3]}"></i>${esc(m.displayName)}${m.isMe ? ' <small>(tú)</small>' : ''}</li>`).join('')}</ul>
       ${partner ? '' : `<div id="invite-box"><p class="modal-intro">Tu pareja todavía no se une. Genera un código y compártelo; sirve una sola vez durante 7 días.</p><button class="button secondary full" id="create-invite">Generar código para mi pareja</button></div>`}
     </section>
+    <section class="settings-section" data-push-section hidden></section>
     <section class="settings-section">
       <h3>Apariencia</h3>
       <div class="theme-choice" data-theme-choice></div>
@@ -315,6 +322,7 @@ export function openSettings(onChange) {
   $('#sign-out').onclick = signOut;
   bindThemeChoice(dialog.querySelector('[data-theme-choice]'));
   bindSoundToggle(dialog.querySelector('[data-sound-toggle]'));
+  bindPushSection(dialog.querySelector('[data-push-section]'), partner?.displayName || 'tu pareja');
   $('#profile-form').onsubmit = async event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));

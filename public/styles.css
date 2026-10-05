@@ -362,3 +362,8 @@ tr.flash td,tr.flash{animation:row-flash 2.2s ease-out}
 :root[data-theme=dark] .task-urgent{color:#f08a9c}
 @keyframes task-done-dark{50%{transform:scale(.97);background:#1c3329}}
 :root[data-theme=dark] .task.checking{animation-name:task-done-dark}
+/* Invitación a activar notificaciones */
+.push-banner{background:#eef4fb;border-color:#d6e4f5;color:#3d5f86;align-items:center}
+.push-banner div{display:flex;gap:16px;flex-shrink:0}
+.push-banner #push-enable{font-weight:700}
+:root[data-theme=dark] .push-banner{background:#172434;border-color:#25374d;color:#a9c6ea}

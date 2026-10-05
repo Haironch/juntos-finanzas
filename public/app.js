@@ -3,6 +3,7 @@ import * as cloud from './cloud.js';
 import * as native from './native.js';
 import * as effects from './effects.js';
 import * as tasks from './tasks.js';
+import * as push from './push.js';
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'Q '+(n/100).toLocaleString('es-GT',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -74,6 +75,6 @@ const session=await cloud.start();
 if(session){cloudMode=true;real=state={version:1,names:cloud.names(),transactions:[],goals:{}};$('.import-label').hidden=true;render();await syncMonth();
 // Al volver a la app se trae lo que la pareja registró mientras tanto.
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkForChanges();});setInterval(checkForChanges,8000);
-$('#invite-partner').onclick=settings;tasks.init({openExpense:openTaskExpense});}
+$('#invite-partner').onclick=settings;tasks.init({openExpense:openTaskExpense});push.sync();if(cloud.hasPartner())push.offer(real.names[cloud.myPerson()==='him'?'her':'him']);}
 else{render();if(loadError)toast('No se pudo leer el guardado anterior. Se conservó el original; puedes descargarlo o restaurar un respaldo.');}
 if(document.modelContext?.registerTool){try{Promise.resolve(document.modelContext.registerTool({name:'read_month_summary',title:'Consultar resumen mensual',description:'Lee los saldos y la meta del mes que se muestra en Juntos. Los montos están en centavos de GTQ.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute(input){if(input&&Object.keys(input).length)throw Error('Esta consulta no admite parámetros.');const d=s();return {month,demo,names:state.names,balance:d.balance,income:d.income,expense:d.expense,goal:goal()||null};}})).catch(()=>{});}catch{}}

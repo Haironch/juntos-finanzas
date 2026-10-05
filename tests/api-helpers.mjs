@@ -5,17 +5,21 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createClient} from '@libsql/client';
 import {migrate} from '../database/db.mjs';
+import {createNotifier} from '../database/push.mjs';
 import {createApi} from '../server/api.mjs';
 
 export const ORIGIN = 'http://app.test';
 
-export async function startApi() {
+// send: enviador falso de notificaciones (recibe suscripción y mensaje); sin él no hay notificaciones.
+export async function startApi({send, pushPublicKey} = {}) {
   const folder = mkdtempSync(join(tmpdir(), 'juntos-api-'));
   const db = createClient({url: 'file:' + join(folder, 'test.db')});
   await migrate(db);
   const handle = createApi({
     db,
     appOrigin: ORIGIN,
+    notifier: send && createNotifier({client: db, config: {}, send}),
+    pushPublicKey,
     getSession: async req => req.headers['x-test-user'] ? {user: {id: req.headers['x-test-user'], name: 'Prueba', email: 'p@ejemplo.com', image: null}} : null,
   });
   const server = http.createServer((req, res) => handle(req, res, new URL(req.url, 'http://x').pathname));

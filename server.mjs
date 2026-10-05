@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {fromNodeHeaders, toNodeHandler} from 'better-auth/node';
 import {createAuth, missingAuthEnv} from './database/auth.mjs';
 import {connect, readMigrations} from './database/db.mjs';
+import {createNotifier, pushConfig} from './database/push.mjs';
 import {createApi, json} from './server/api.mjs';
 
 const envFile = new URL('./.env', import.meta.url);
@@ -14,7 +15,7 @@ const ON_VERCEL = Boolean(process.env.VERCEL);
 const PORT = Number(process.env.PORT) || 5173;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const files = {'/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/finance.js': 'finance.js', '/cloud.js': 'cloud.js', '/styles.css': 'styles.css', '/favicon.svg': 'favicon.svg',
-  '/native.js': 'native.js', '/effects.js': 'effects.js', '/tasks.js': 'tasks.js', '/sw.js': 'sw.js', '/manifest.webmanifest': 'manifest.webmanifest',
+  '/native.js': 'native.js', '/effects.js': 'effects.js', '/tasks.js': 'tasks.js', '/push.js': 'push.js', '/sw.js': 'sw.js', '/manifest.webmanifest': 'manifest.webmanifest',
   '/icons/icon-192.png': 'icons/icon-192.png', '/icons/icon-512.png': 'icons/icon-512.png', '/icons/apple-touch-icon.png': 'icons/apple-touch-icon.png'};
 const types = {html: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', svg: 'image/svg+xml', png: 'image/png', webmanifest: 'application/manifest+json'};
 
@@ -27,10 +28,14 @@ if (missing.length) {
   db = connect().client;
   auth = createAuth(db);
   authHandler = toNodeHandler(auth);
+  // Sin claves VAPID la app funciona igual, solo sin notificaciones push.
+  const push = pushConfig();
   handleApi = createApi({
     db,
     getSession: req => auth.api.getSession({headers: fromNodeHeaders(req.headers)}),
     appOrigin: new URL(process.env.BETTER_AUTH_URL).origin,
+    notifier: push && createNotifier({client: db, config: push}),
+    pushPublicKey: push?.publicKey,
   });
 }
 // Solo en local: avisar de configuración y migraciones pendientes (en Vercel las migraciones no viajan con la función).

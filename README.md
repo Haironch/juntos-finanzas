@@ -44,6 +44,7 @@ Se expone opcionalmente la consulta de solo lectura WebMCP `read_month_summary` 
 - Sesiones de 60 días que se renuevan con el uso.
 - Al registrar algo nuevo (o saldar un pendiente) suena un "cha-ching" de monedas si entra dinero o un tono grave si sale, y aparece el monto animado (`public/effects.js`, sonidos sintetizados con Web Audio, sin archivos). Los saldos cuentan hasta su nuevo valor y el movimiento nuevo se ilumina. Los sonidos se apagan en Nuestro espacio > Apariencia y respetan el modo silencio.
 - Pendientes (botón de la barra superior, `public/tasks.js`): lista compartida de cosas por comprar y pagos por hacer, con monto y fecha límite opcionales. El número se pone rojo si un pago vence en 3 días o menos. "＋ gasto" abre el registro ya lleno y marca el pendiente como hecho al guardar.
+- Notificaciones push (iOS 16.4+ con la app instalada): avisan a la pareja cuando alguien registra un gasto o aporte, o salda un pendiente. Se activan en Nuestro espacio > Notificaciones. Requieren `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` en Vercel (generarlas con `npx web-push generate-vapid-keys`); `VAPID_SUBJECT` es opcional. Sin ellas la app funciona igual, sin avisos.
 - Modo oscuro: por defecto sigue al teléfono; en Nuestro espacio > Apariencia se elige Automático, Claro u Oscuro (se guarda en cada dispositivo). Un script en el `<head>` aplica el tema antes de dibujar. Los colores de cada persona tienen paleta clara y oscura en `public/cloud.js`.
 
 ## Publicar en Vercel

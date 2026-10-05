@@ -2,6 +2,7 @@
 import {resolveUser} from '../database/auth.mjs';
 import {HttpError} from '../database/common.mjs';
 import {createTransaction, deleteGoal, deleteTransaction, getMonth, getPending, getRevision, saveGoal, settleTransactions, updateTransaction} from '../database/finances.mjs';
+import {deleteSubscription, saveSubscription} from '../database/push.mjs';
 import {clearDoneTasks, createTask, deleteTask, listTasks, updateTask} from '../database/tasks.mjs';
 import {createHousehold, createInvite, getHousehold, joinHousehold, updateMember} from '../database/households.mjs';
 
@@ -30,7 +31,20 @@ async function readJson(req) {
   }
 }
 
-export function createApi({db, getSession, appOrigin}) {
+// Los avisos push nunca hacen fallar ni demorar de más un registro: se esperan como máximo 4 segundos
+// (en Vercel la función se congela al responder, así que hay que enviarlos antes).
+async function quietly(task) {
+  let timer;
+  try {
+    await Promise.race([task(), new Promise(resolve => { timer = setTimeout(resolve, 4000); })]);
+  } catch (error) {
+    console.error('No se pudo enviar la notificación:', error.message);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function createApi({db, getSession, appOrigin, notifier = null, pushPublicKey = null}) {
   // [método, ruta con :parámetros, acción]. Los parámetros solo aceptan letras, números y guiones.
   const routes = [
     ['GET', '/api/me', async ({session, userId}) => {
@@ -44,7 +58,11 @@ export function createApi({db, getSession, appOrigin}) {
     ['GET', '/api/months/:month', ({userId, params}) => getMonth(db, userId, params.month)],
     ['PUT', '/api/months/:month/goal', ({userId, params, body}) => saveGoal(db, userId, params.month, body)],
     ['DELETE', '/api/months/:month/goal', ({userId, params, body}) => deleteGoal(db, userId, params.month, body)],
-    ['POST', '/api/transactions', ({userId, body}) => createTransaction(db, userId, body)],
+    ['POST', '/api/transactions', async ({userId, body}) => {
+      const transaction = await createTransaction(db, userId, body);
+      if (notifier) await quietly(() => notifier.transactionCreated(userId, transaction));
+      return transaction;
+    }],
     ['GET', '/api/pending', ({userId}) => getPending(db, userId)],
     ['GET', '/api/sync', ({userId}) => getRevision(db, userId)],
     ['GET', '/api/tasks', ({userId}) => listTasks(db, userId)],
@@ -53,7 +71,17 @@ export function createApi({db, getSession, appOrigin}) {
     ['DELETE', '/api/tasks/done', ({userId}) => clearDoneTasks(db, userId)],
     ['PATCH', '/api/tasks/:id', ({userId, params, body}) => updateTask(db, userId, params.id, body)],
     ['DELETE', '/api/tasks/:id', ({userId, params, body}) => deleteTask(db, userId, params.id, body)],
-    ['POST', '/api/pending/settle', ({userId, body}) => settleTransactions(db, userId, body)],
+    ['POST', '/api/pending/settle', async ({userId, body}) => {
+      const result = await settleTransactions(db, userId, body);
+      if (notifier) await quietly(() => notifier.settled(userId, result.settled));
+      return result;
+    }],
+    ['GET', '/api/push/key', () => {
+      if (!pushPublicKey) throw new HttpError(503, 'Notificaciones no configuradas');
+      return {publicKey: pushPublicKey};
+    }],
+    ['POST', '/api/push/subscribe', ({userId, body}) => saveSubscription(db, userId, body)],
+    ['DELETE', '/api/push/subscribe', ({userId, body}) => deleteSubscription(db, userId, body)],
     ['PATCH', '/api/transactions/:id', ({userId, params, body}) => updateTransaction(db, userId, params.id, body)],
     ['DELETE', '/api/transactions/:id', ({userId, params, body}) => deleteTransaction(db, userId, params.id, body)],
   ].map(([method, path, action]) => ({

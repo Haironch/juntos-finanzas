@@ -99,6 +99,16 @@ Tabla `household_tasks` (migración 007): `kind` `buy` o `pay`, `title`, `amount
 | `DELETE /api/tasks/:id` `{version}` | Borra un pendiente. |
 | `DELETE /api/tasks/done` | Borra todos los completados. |
 
+### Notificaciones push
+
+Tabla `push_subscriptions` (migración 008): un registro por teléfono. Al crear un movimiento o saldar pendientes se avisa solo a la pareja (nunca al autor), esperando como máximo 4 segundos para no demorar el registro; si el servicio responde 404/410 se borra la suscripción. Solo se aceptan servicios de push conocidos (Apple, Google, Mozilla, Microsoft).
+
+| Ruta | Qué hace |
+| --- | --- |
+| `GET /api/push/key` | Clave pública VAPID; 503 si no están configuradas. |
+| `POST /api/push/subscribe` `{endpoint, keys: {p256dh, auth}}` | Registra este teléfono para el usuario de la sesión. |
+| `DELETE /api/push/subscribe` `{endpoint}` | Deja de avisar a este teléfono. |
+
 Ediciones simultáneas: toda edición o borrado exige la `version` que se leyó. Si la pareja cambió el dato antes, la API responde 409 con `current` (el dato vigente) para mostrarlo y decidir, en lugar de sobrescribirlo. Movimientos de otro hogar responden 404.
 
 ## Interfaz

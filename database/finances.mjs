@@ -208,23 +208,26 @@ export async function deleteTransaction(client, userId, id, body = {}) {
 }
 
 // Marca como transferidos los gastos indicados con la versión que se vio. Si alguno cambió, no se marca ninguno.
+// settled lista lo que se saldó, con lo que se debía antes (pendingCents), para avisar a la pareja.
 export async function settleTransactions(client, userId, body = {}) {
   const items = body.items;
   if (!Array.isArray(items) || !items.length || items.length > MAX_SETTLE) throw new HttpError(400, `items debe tener entre 1 y ${MAX_SETTLE} gastos`);
   return write(client, async tx => {
     const context = await requireMember(tx, userId);
+    const settled = [];
     for (const item of items) {
       const row = await findTransaction(tx, context, item?.id);
       assertVersion(row, version(item.version), current => toTransaction(current, context));
       if (row.paid_by === null) throw new HttpError(400, 'Solo un gasto compartido o un préstamo se puede saldar');
       if (row.settled_at !== null) continue;
+      settled.push(toTransaction(row, context));
       await tx.execute({
         sql: `UPDATE transactions SET settled_at = ${NOW}, settled_by = ?, version = version + 1, updated_at = ${NOW}
               WHERE household_id = ? AND id = ? AND version = ?`,
         args: [userId, context.householdId, row.id, row.version],
       });
     }
-    return pendingFor(tx, context);
+    return {...await pendingFor(tx, context), settled};
   });
 }
 

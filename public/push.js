@@ -9,12 +9,13 @@ let publicKey = null;
 
 const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
+// Se guarda solo cuando el servidor la entrega; si falla se vuelve a pedir la próxima vez.
 async function key() {
-  if (publicKey === null) {
+  if (!publicKey) {
     try {
       publicKey = (await cloud.pushKey()).publicKey;
     } catch {
-      publicKey = false;
+      return null;
     }
   }
   return publicKey;
@@ -75,8 +76,9 @@ export async function sync() {
 export async function bindPushSection(section, partnerName) {
   const render = async (error = '') => {
     const current = await state();
-    section.hidden = current === 'unavailable';
+    section.hidden = false;
     const texts = {
+      unavailable: 'Todavía no están activadas en el servidor: faltan las claves VAPID en Vercel o volver a publicar (Redeploy). Cierra y abre la app después de publicar.',
       install: 'En iPhone las notificaciones funcionan con Juntos instalada: en Safari toca Compartir → Agregar a pantalla de inicio, y ábrela desde el ícono.',
       unsupported: 'Este navegador no permite notificaciones.',
       denied: 'Están bloqueadas en este teléfono. Actívalas en Ajustes → Notificaciones → Juntos.',
